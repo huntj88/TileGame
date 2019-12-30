@@ -19,30 +19,84 @@ class GameView @JvmOverloads constructor(
     }
 
     private var tiles: Array<Array<Tile?>> = getInitialBoard()
-    private var currentState: GameState = GameState.TilesFalling
+    private var currentState: GameState = GameState.CheckForFallableTiles()
     private var tick = 0
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        val visibleTiles = getVisibleTiles()
+        updateBoard()
+
         val screenContext = getScreenContext(canvas)
-
-        when (currentState) {
-            GameState.WaitForInput -> TODO()
-            GameState.InputDetected -> TODO()
-            GameState.TilesFalling -> {
-
+        (0 until numTilesSize).forEach { x ->
+            (0 until numTilesSize * 2).forEach { y ->
+                tiles[x][y]?.render(x, y, screenContext, tick, currentState)
             }
-            GameState.CheckForPoints -> TODO()
-            GameState.RemovingTiles -> TODO()
         }
 
+        tick += 1
 
-        (0 until numTilesSize).forEach { x ->
-            (0 until numTilesSize).forEach { y ->
-                visibleTiles[x][y]?.render(x, y, screenContext, tick)
+        invalidate()
+    }
+
+    private fun updateBoard() {
+        when (val state = currentState) {
+            is GameState.WaitForInput -> TODO()
+            is GameState.InputDetected -> TODO()
+            is GameState.CheckForFallableTiles -> {
+
+                // find lowest posY of each row
+                // if any fallable tiles set current state to TilesFalling
+                // if no fallable tiles set current state to CheckForPoints
+                // call updateBoard again
+
+                val lowestPosYOfTiles = tiles.map {
+                    it.indexOfLast { it != null } as PosY
+                }
+                val doneFalling = lowestPosYOfTiles.fold(true) { acc, posY ->
+                    val indexOfBottomTile = (numTilesSize * 2) - 1
+                    acc && posY == indexOfBottomTile
+                }
+
+                currentState = when (doneFalling) {
+                    true -> GameState.CheckForPoints()
+                    false -> GameState.TilesFalling(tick, lowestPosYOfTiles)
+                }
+
+                updateBoard()
             }
+            is GameState.TilesFalling -> {
+                val isStarting = tick == state.startTick
+                val isStartingOrEnding = (tick - state.startTick) % ticksPerAction == 0
+                val isEnding = !isStarting && isStartingOrEnding
+                if (isEnding) {
+
+                    // shift ones that fell to tile spot below
+                    // set current state to CheckForFallableTiles
+                    // call updateBoard again
+
+                    fun Array<Tile?>.shiftTilesInColumnDown(lowestTile: PosY): Array<Tile?> {
+                        val newTopTile = arrayOf(Tile(TileType.values().random())) as Array<Tile?>
+                        val tilesWithoutPadding = newTopTile + this.copyOfRange(0, lowestTile + 1)
+
+                        val indexOfBottomTile = (numTilesSize * 2) - 1
+                        val nullPadding = (0 until (indexOfBottomTile - lowestTile - newTopTile.size))
+                            .map { null }
+                            .toTypedArray<Tile?>()
+
+                        return tilesWithoutPadding + nullPadding
+                    }
+
+                    tiles = tiles.mapIndexed { index, arrayOfTiles ->
+                        arrayOfTiles.shiftTilesInColumnDown(state.lowestPosYOfTiles[index])
+                    }.toTypedArray()
+
+                    currentState = GameState.CheckForFallableTiles()
+                    updateBoard()
+                }
+            }
+            is GameState.CheckForPoints -> TODO()
+            is GameState.RemovingTiles -> TODO()
         }
     }
 
@@ -62,16 +116,18 @@ class GameView @JvmOverloads constructor(
         return ScreenContext(canvas, gridSize, gridStartX, gridStartY)
     }
 
-    private fun getVisibleTiles(): Array<Array<Tile?>> {
-        return tiles
-            .map { it.copyOfRange(numTilesSize, numTilesSize * 2) }
-            .toTypedArray()
-    }
+//    TODO: will be used in checkForPoints
+//    private fun getVisibleTiles(): Array<Array<Tile?>> {
+//        return tiles
+//            .map { it.copyOfRange(numTilesSize, numTilesSize * 2) }
+//            .toTypedArray()
+//    }
 
     private fun getInitialBoard(): Array<Array<Tile?>> {
         return Array(numTilesSize) { x ->
             Array(numTilesSize * 2) { y ->
-                when (y < numTilesSize) {
+                when (y < 11) {
+//                when (y < numTilesSize) {
                     true -> Tile(TileType.values().random()) // TODO: start with no auto solvable
                     false -> null
                 }
@@ -88,15 +144,20 @@ data class ScreenContext(
 )
 
 private class Tile(val type: TileType) {
-    fun render(x: Int, y: Int, screenContext: ScreenContext, tick: Int) {
+    fun render(x: Int, y: Int, screenContext: ScreenContext, tick: Int, state: GameState) {
         val tileSize = screenContext.gridSize / GameView.numTilesSize.toFloat()
         val tileRadius = tileSize / 4f
 
+        val fallingYOffset = (state as? GameState.TilesFalling)?.let {
+            val fallingYOffsetPerTick = tileSize / GameView.ticksPerAction
+            fallingYOffsetPerTick * ((tick - state.startTick) % GameView.ticksPerAction)
+        } ?: 0f
+
         screenContext.canvas.drawRoundRect(
             (x * tileSize) + screenContext.gridStartX,
-            (y * tileSize) + screenContext.gridStartY,
+            ((y - GameView.numTilesSize) * tileSize) + screenContext.gridStartY + fallingYOffset,
             (x * tileSize) + tileSize + screenContext.gridStartX,
-            (y * tileSize) + +tileSize + screenContext.gridStartY,
+            ((y - GameView.numTilesSize) * tileSize) + tileSize + screenContext.gridStartY + fallingYOffset,
             tileRadius,
             tileRadius,
             type.paint
@@ -132,10 +193,14 @@ enum class TileType {
         }
 }
 
-enum class GameState {
-    WaitForInput,
-    InputDetected,
-    TilesFalling,
-    CheckForPoints,
-    RemovingTiles
+//typealias PosX = Int
+typealias PosY = Int
+
+sealed class GameState {
+    class WaitForInput : GameState()
+    class InputDetected : GameState()
+    class CheckForFallableTiles : GameState()
+    class TilesFalling(val startTick: Int, val lowestPosYOfTiles: List<PosY>) : GameState()
+    class CheckForPoints : GameState()
+    class RemovingTiles : GameState()
 }
