@@ -18,7 +18,7 @@ class GameView @JvmOverloads constructor(
         const val ticksPerAction = 8
     }
 
-    private var tiles: Array<Array<Tile?>> = getInitialBoard()
+    private var tiles: List<List<Tile?>> = getInitialBoard()
     private var currentState: GameState = GameState.CheckForFallableTiles()
     private var tick = 0
 
@@ -75,21 +75,21 @@ class GameView @JvmOverloads constructor(
                     // set current state to CheckForFallableTiles
                     // call updateBoard again
 
-                    fun Array<Tile?>.shiftTilesInColumnDown(lowestTile: PosY): Array<Tile?> {
-                        val newTopTile = arrayOf(Tile(TileType.values().random())) as Array<Tile?>
-                        val tilesWithoutPadding = newTopTile + this.copyOfRange(0, lowestTile + 1)
+                    fun List<Tile?>.shiftTilesInColumnDown(lowestTile: PosY): List<Tile?> {
+                        val newTopTile = listOf(Tile(TileType.values().random())) as List<Tile?>
+                        val tilesWithoutPadding = newTopTile + this.subList(0, lowestTile + 1)
 
                         val indexOfBottomTile = (numTilesSize * 2) - 1
-                        val nullPadding = (0 until (indexOfBottomTile - lowestTile - newTopTile.size))
-                            .map { null }
-                            .toTypedArray<Tile?>()
+                        val nullPadding =
+                            (0 until (indexOfBottomTile - lowestTile - newTopTile.size))
+                                .map { null } as List<Tile?>
 
                         return tilesWithoutPadding + nullPadding
                     }
 
                     tiles = tiles.mapIndexed { index, arrayOfTiles ->
                         arrayOfTiles.shiftTilesInColumnDown(state.lowestPosYOfTiles[index])
-                    }.toTypedArray()
+                    }
 
                     currentState = GameState.CheckForFallableTiles()
                     updateBoard()
@@ -116,16 +116,14 @@ class GameView @JvmOverloads constructor(
         return ScreenContext(canvas, gridSize, gridStartX, gridStartY)
     }
 
-//    TODO: will be used in checkForPoints
-//    private fun getVisibleTiles(): Array<Array<Tile?>> {
-//        return tiles
-//            .map { it.copyOfRange(numTilesSize, numTilesSize * 2) }
-//            .toTypedArray()
+    // TODO: will be used in checkForPoints
+//    private fun getVisibleTiles(): List<List<Tile?>> {
+//        return tiles.map { it.subList(numTilesSize, numTilesSize * 2) }
 //    }
 
-    private fun getInitialBoard(): Array<Array<Tile?>> {
-        return Array(numTilesSize) { x ->
-            Array(numTilesSize * 2) { y ->
+    private fun getInitialBoard(): List<List<Tile?>> {
+        return (0 until numTilesSize).map { x ->
+            (0 until numTilesSize * 2).map { y ->
                 when (y < 11) {
 //                when (y < numTilesSize) {
                     true -> Tile(TileType.values().random()) // TODO: start with no auto solvable
