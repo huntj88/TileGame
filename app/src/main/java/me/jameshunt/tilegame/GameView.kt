@@ -22,6 +22,8 @@ class GameView @JvmOverloads constructor(
     private var currentState: GameState = GameState.CheckForFallableTiles()
     private var tick = 0
 
+    private val black = Paint().apply { color = Color.BLACK }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
@@ -34,6 +36,22 @@ class GameView @JvmOverloads constructor(
             }
         }
 
+        canvas.drawLine(
+            screenContext.gridStartX.toFloat(),
+            screenContext.gridStartY.toFloat(),
+            screenContext.gridStartX.toFloat() + screenContext.gridSize.toFloat(),
+            screenContext.gridStartY.toFloat(),
+            black
+        )
+
+        canvas.drawLine(
+            screenContext.gridStartX.toFloat(),
+            screenContext.gridStartY.toFloat()+ screenContext.gridSize.toFloat(),
+            screenContext.gridStartX.toFloat() + screenContext.gridSize.toFloat(),
+            screenContext.gridStartY.toFloat() + screenContext.gridSize.toFloat(),
+            black
+        )
+
         tick += 1
 
         invalidate()
@@ -45,22 +63,25 @@ class GameView @JvmOverloads constructor(
             is GameState.InputDetected -> TODO()
             is GameState.CheckForFallableTiles -> {
 
-                // find lowest posY of each row
+                // find lowest fallable posY of each row
                 // if any fallable tiles set current state to TilesFalling
                 // if no fallable tiles set current state to CheckForPoints
                 // call updateBoard again
 
-                val lowestPosYOfTiles = tiles.map {
-                    it.indexOfLast { it != null } as PosY
+                val lowestPosYOfFallableTiles = tiles.map { tileColumn ->
+                    val lowestPosOfNullTile = tileColumn.indexOfLast { it == null }
+                    (0 until lowestPosOfNullTile)
+                        .map { tileColumn[it] }
+                        .indexOfLast { it != null } as PosY
                 }
-                val doneFalling = lowestPosYOfTiles.fold(true) { acc, posY ->
+                val doneFalling = lowestPosYOfFallableTiles.foldIndexed(true) { index, acc, posY ->
                     val indexOfBottomTile = (numTilesSize * 2) - 1
-                    acc && posY == indexOfBottomTile
+                    acc && posY == indexOfBottomTile && !tiles[index].contains(null)
                 }
 
                 currentState = when (doneFalling) {
                     true -> GameState.CheckForPoints()
-                    false -> GameState.TilesFalling(tick, lowestPosYOfTiles)
+                    false -> GameState.TilesFalling(tick, lowestPosYOfFallableTiles)
                 }
 
                 updateBoard()
@@ -88,7 +109,7 @@ class GameView @JvmOverloads constructor(
                     }
 
                     tiles = tiles.mapIndexed { index, arrayOfTiles ->
-                        arrayOfTiles.shiftTilesInColumnDown(state.lowestPosYOfTiles[index])
+                        arrayOfTiles.shiftTilesInColumnDown(state.lowestPosYOfFallableTiles[index])
                     }
 
                     currentState = GameState.CheckForFallableTiles()
@@ -124,7 +145,7 @@ class GameView @JvmOverloads constructor(
     private fun getInitialBoard(): List<List<Tile?>> {
         return (0 until numTilesSize).map { x ->
             (0 until numTilesSize * 2).map { y ->
-                when (y < 11) {
+                when (y < 11 && y != 8) {
 //                when (y < numTilesSize) {
                     true -> Tile(TileType.values().random()) // TODO: start with no auto solvable
                     false -> null
@@ -148,7 +169,12 @@ private class Tile(val type: TileType) {
 
         val fallingYOffset = (state as? GameState.TilesFalling)?.let {
             val fallingYOffsetPerTick = tileSize / GameView.ticksPerAction
-            fallingYOffsetPerTick * ((tick - state.startTick) % GameView.ticksPerAction)
+            val fallingYOffset = fallingYOffsetPerTick * ((tick - state.startTick) % GameView.ticksPerAction)
+
+            when(state.lowestPosYOfFallableTiles[x] < y) {
+                true -> 0f
+                false -> fallingYOffset
+            }
         } ?: 0f
 
         screenContext.canvas.drawRoundRect(
@@ -198,7 +224,7 @@ sealed class GameState {
     class WaitForInput : GameState()
     class InputDetected : GameState()
     class CheckForFallableTiles : GameState()
-    class TilesFalling(val startTick: Int, val lowestPosYOfTiles: List<PosY>) : GameState()
+    class TilesFalling(val startTick: Int, val lowestPosYOfFallableTiles: List<PosY>) : GameState()
     class CheckForPoints : GameState()
     class RemovingTiles : GameState()
 }
