@@ -96,16 +96,19 @@ class GameView @JvmOverloads constructor(
                     // set current state to CheckForFallableTiles
                     // call updateBoard again
 
-                    fun List<Tile?>.shiftTilesInColumnDown(lowestTile: PosY): List<Tile?> {
+                    fun List<Tile?>.shiftTilesInColumnDown(lowestFallableTile: PosY): List<Tile?> {
+                        if(!this.contains(null)) return this
+
                         val newTopTile = listOf(Tile(TileType.values().random())) as List<Tile?>
-                        val tilesWithoutPadding = newTopTile + this.subList(0, lowestTile + 1)
+                        val tilesWithoutPadding = newTopTile + this.subList(0, lowestFallableTile + 1)
 
                         val indexOfBottomTile = (numTilesSize * 2) - 1
-                        val nullPadding =
-                            (0 until (indexOfBottomTile - lowestTile - newTopTile.size))
-                                .map { null } as List<Tile?>
 
-                        return tilesWithoutPadding + nullPadding
+                        val end = (lowestFallableTile + 2..indexOfBottomTile).map {
+                            this[it]
+                        }
+
+                        return tilesWithoutPadding + end
                     }
 
                     tiles = tiles.mapIndexed { index, arrayOfTiles ->
