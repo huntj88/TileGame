@@ -100,15 +100,14 @@ class GameView @JvmOverloads constructor(
                         if(!this.contains(null)) return this
 
                         val newTopTile = listOf(Tile(TileType.values().random())) as List<Tile?>
-                        val tilesWithoutPadding = newTopTile + this.subList(0, lowestFallableTile + 1)
+                        val tilesThatFell = newTopTile + this.subList(0, lowestFallableTile + 1)
 
                         val indexOfBottomTile = (numTilesSize * 2) - 1
 
-                        val end = (lowestFallableTile + 2..indexOfBottomTile).map {
-                            this[it]
-                        }
+                        val tilesThatDidNotFall = (lowestFallableTile + 2..indexOfBottomTile)
+                            .map { this[it] }
 
-                        return tilesWithoutPadding + end
+                        return tilesThatFell + tilesThatDidNotFall
                     }
 
                     tiles = tiles.mapIndexed { index, arrayOfTiles ->
@@ -148,8 +147,8 @@ class GameView @JvmOverloads constructor(
     private fun getInitialBoard(): List<List<Tile?>> {
         return (0 until numTilesSize).map { x ->
             (0 until numTilesSize * 2).map { y ->
-                when (y < 11 && y != 8) {
-//                when (y < numTilesSize) {
+//                when (y < 8 && y % 2 == 0) {
+                when (y < numTilesSize) {
                     true -> Tile(TileType.values().random()) // TODO: start with no auto solvable
                     false -> null
                 }
