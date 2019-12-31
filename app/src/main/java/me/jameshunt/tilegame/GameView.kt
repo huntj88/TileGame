@@ -112,10 +112,7 @@ class GameView @JvmOverloads constructor(
                 }
             }
             is GameState.TilesFalling -> {
-                val isStarting = tick == state.startTick
-                val isStartingOrEnding = (tick - state.startTick) % ticksPerAction == 0
-                val isEnding = !isStarting && isStartingOrEnding
-                if (isEnding) {
+                onAnimationCompleted(state.startTick) {
 
                     // shift ones that fell to tile spot below
                     // set current state to CheckForFallableTiles
@@ -227,14 +224,20 @@ class GameView @JvmOverloads constructor(
                 }
             }
             is GameState.RemovingTiles -> {
-                val isStarting = tick == state.startTick
-                val isStartingOrEnding = (tick - state.startTick) % ticksPerAction == 0
-                val isEnding = !isStarting && isStartingOrEnding
-                if (isEnding) {
+                onAnimationCompleted(state.startTick) {
                     tiles = state.newBoardAfterRemove
                     currentState = GameState.CheckForFallableTiles
                 }
             }
+        }
+    }
+
+    private fun onAnimationCompleted(startTick: Int, action: () -> Unit) {
+        val isStarting = tick == startTick
+        val isStartingOrEnding = (tick - startTick) % ticksPerAction == 0
+        val isEnding = !isStarting && isStartingOrEnding
+        if (isEnding) {
+            action()
         }
     }
 
