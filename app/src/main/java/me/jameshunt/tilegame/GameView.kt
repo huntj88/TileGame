@@ -200,12 +200,17 @@ class GameView @JvmOverloads constructor(
 
                 currentState = when (isBoardSame) {
                     true -> GameState.WaitForInput()
-                    false -> GameState.RemovingTiles(mergedMatches)
+                    false -> GameState.RemovingTiles(tick, mergedMatches)
                 }
             }
             is GameState.RemovingTiles -> {
-                tiles = state.newBoardAfterRemove
-                currentState = GameState.CheckForFallableTiles()
+                val isStarting = tick == state.startTick
+                val isStartingOrEnding = (tick - state.startTick) % ticksPerAction == 0
+                val isEnding = !isStarting && isStartingOrEnding
+                if (isEnding) {
+                    tiles = state.newBoardAfterRemove
+                    currentState = GameState.CheckForFallableTiles()
+                }
             }
         }
     }
@@ -276,11 +281,20 @@ private class Tile(val type: TileType) {
             }
         } ?: 0f
 
+        val sizeOffset = (state as? GameState.RemovingTiles)?.let {
+            val sizeShrinkPerTick = tileSize / 2 / GameView.ticksPerAction
+
+            when(it.newBoardAfterRemove[x][y] == null) {
+                true -> tileSize - (sizeShrinkPerTick * ((tick - state.startTick) % GameView.ticksPerAction))
+                false -> 0f
+            }
+        } ?: 0f
+
         screenContext.canvas.drawRoundRect(
-            (x * tileSize) + screenContext.gridStartX,
-            ((y - GameView.numTilesSize) * tileSize) + screenContext.gridStartY + fallingYOffset,
-            (x * tileSize) + tileSize + screenContext.gridStartX,
-            ((y - GameView.numTilesSize) * tileSize) + tileSize + screenContext.gridStartY + fallingYOffset,
+            (x * tileSize) + screenContext.gridStartX + sizeOffset,
+            ((y - GameView.numTilesSize) * tileSize) + screenContext.gridStartY + fallingYOffset + sizeOffset,
+            (x * tileSize) + tileSize + screenContext.gridStartX - sizeOffset,
+            ((y - GameView.numTilesSize) * tileSize) + tileSize + screenContext.gridStartY + fallingYOffset - sizeOffset,
             tileRadius,
             tileRadius,
             type.paint
@@ -325,5 +339,5 @@ private sealed class GameState {
     class CheckForFallableTiles : GameState()
     class TilesFalling(val startTick: Int, val lowestPosYOfFallableTiles: List<PosY>) : GameState()
     class CheckForPoints : GameState()
-    class RemovingTiles(val newBoardAfterRemove: List<List<Tile?>>) : GameState()
+    class RemovingTiles(val startTick: Int, val newBoardAfterRemove: List<List<Tile?>>) : GameState()
 }
