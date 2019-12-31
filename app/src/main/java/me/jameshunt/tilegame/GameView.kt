@@ -46,7 +46,7 @@ class GameView @JvmOverloads constructor(
 
         canvas.drawLine(
             screenContext.gridStartX.toFloat(),
-            screenContext.gridStartY.toFloat()+ screenContext.gridSize.toFloat(),
+            screenContext.gridStartY.toFloat() + screenContext.gridSize.toFloat(),
             screenContext.gridStartX.toFloat() + screenContext.gridSize.toFloat(),
             screenContext.gridStartY.toFloat() + screenContext.gridSize.toFloat(),
             black
@@ -76,7 +76,7 @@ class GameView @JvmOverloads constructor(
                 }
                 val doneFalling = lowestPosYOfFallableTiles.foldIndexed(true) { index, acc, posY ->
                     val indexOfBottomTile = (numTilesSize * 2) - 1
-                    acc && posY == indexOfBottomTile && !tiles[index].contains(null)
+                    acc && (posY == indexOfBottomTile || !tiles[index].contains(null))
                 }
 
                 currentState = when (doneFalling) {
@@ -97,7 +97,7 @@ class GameView @JvmOverloads constructor(
                     // call updateBoard again
 
                     fun List<Tile?>.shiftTilesInColumnDown(lowestFallableTile: PosY): List<Tile?> {
-                        if(!this.contains(null)) return this
+                        if (!this.contains(null)) return this
 
                         val newTopTile = listOf(Tile(TileType.values().random())) as List<Tile?>
                         val tilesThatFell = newTopTile + this.subList(0, lowestFallableTile + 1)
@@ -118,7 +118,64 @@ class GameView @JvmOverloads constructor(
                     updateBoard()
                 }
             }
-            is GameState.CheckForPoints -> TODO()
+            is GameState.CheckForPoints -> {
+                fun List<Tile>.checkVerticalPoints(): List<Tile?> {
+                    val tilesWithRemoved = this.map { it as Tile? }.toMutableList()
+
+                    var indexOfStartMatching = 0
+                    var matchSoFarSize = 0
+
+                    fun checkIfMatch() {
+                        if (matchSoFarSize >= 3) {
+                            (indexOfStartMatching until indexOfStartMatching + matchSoFarSize).forEach {
+                                tilesWithRemoved[it] = null
+                            }
+                        }
+                    }
+
+                    this.forEachIndexed { index, tile ->
+                        if (index == indexOfStartMatching) {
+                            matchSoFarSize = 1
+                            return@forEachIndexed
+                        }
+
+                        when (tile.type == this[indexOfStartMatching].type) {
+                            true -> matchSoFarSize += 1
+                            false -> {
+                                checkIfMatch()
+
+                                // tile changed start new stuff
+                                indexOfStartMatching = index
+                                matchSoFarSize = 1
+                            }
+                        }
+                    }
+
+                    checkIfMatch()
+
+                    return tilesWithRemoved
+                }
+
+                tiles = tiles.map { column ->
+                    // no elements in list will be null
+                    column.subList(0, numTilesSize) + column.subList(numTilesSize, numTilesSize * 2)
+                        .map { it!! }
+                        .checkVerticalPoints()
+                }
+
+                val isBoardSame = tiles.fold(true) { acc, column ->
+                    val isColumnSame = column.fold(true) { accColumn, tile ->
+                        accColumn && tile != null
+                    }
+                    acc && isColumnSame
+                }
+
+                currentState = when (isBoardSame) {
+                    true -> GameState.WaitForInput()
+                    false -> GameState.CheckForFallableTiles()
+                }
+                updateBoard()
+            }
             is GameState.RemovingTiles -> TODO()
         }
     }
@@ -147,8 +204,8 @@ class GameView @JvmOverloads constructor(
     private fun getInitialBoard(): List<List<Tile?>> {
         return (0 until numTilesSize).map { x ->
             (0 until numTilesSize * 2).map { y ->
-//                when (y < 8 && y % 2 == 0) {
-                when (y < numTilesSize) {
+                when (y < 8 && (y + x) % 3 == 0) {
+//                when (y < numTilesSize) {
                     true -> Tile(TileType.values().random()) // TODO: start with no auto solvable
                     false -> null
                 }
@@ -173,7 +230,7 @@ private class Tile(val type: TileType) {
             val fallingYOffsetPerTick = tileSize / GameView.ticksPerAction
             val fallingYOffset = fallingYOffsetPerTick * ((tick - state.startTick) % GameView.ticksPerAction)
 
-            when(state.lowestPosYOfFallableTiles[x] < y) {
+            when (state.lowestPosYOfFallableTiles[x] < y) {
                 true -> 0f
                 false -> fallingYOffset
             }
