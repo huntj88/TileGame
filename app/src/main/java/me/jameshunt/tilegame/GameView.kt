@@ -326,7 +326,34 @@ private class Tile(val type: TileType) {
         val tileSize = screenContext.gridSize / GameView.numTilesSize.toFloat()
         val tileRadius = tileSize / 4f
 
-        val fallingYOffset = (state as? GameState.TilesFalling)?.let {
+        val fallingYOffset = fallingOffset(x, y, tileSize, tick, state)
+        val sizeOffset = sizeOffset(x, y, tileSize, tick, state)
+        val inputMoveOffset = inputMoveOffset(x, y, tileSize, tick, state)
+
+        val leftOffset = sizeOffset + inputMoveOffset.first
+        val topOffset = fallingYOffset + sizeOffset + inputMoveOffset.second
+        val rightOffset = inputMoveOffset.first - sizeOffset
+        val bottomOffset = fallingYOffset - sizeOffset + inputMoveOffset.second
+
+        canvas.drawRoundRect(
+            (x * tileSize) + screenContext.gridStartX + leftOffset,
+            ((y - GameView.numTilesSize) * tileSize) + screenContext.gridStartY + topOffset,
+            (x * tileSize) + tileSize + screenContext.gridStartX + rightOffset,
+            ((y - GameView.numTilesSize) * tileSize) + tileSize + screenContext.gridStartY + bottomOffset,
+            tileRadius,
+            tileRadius,
+            type.paint
+        )
+    }
+
+    private fun fallingOffset(
+        x: Int,
+        y: Int,
+        tileSize: Float,
+        tick: Int,
+        state: GameState
+    ): Float {
+        return (state as? GameState.TilesFalling)?.let {
             val fallingYOffsetPerTick = tileSize / GameView.ticksPerAction
             val fallingYOffset =
                 fallingYOffsetPerTick * ((tick - state.startTick) % GameView.ticksPerAction)
@@ -336,8 +363,16 @@ private class Tile(val type: TileType) {
                 false -> fallingYOffset
             }
         } ?: 0f
+    }
 
-        val sizeOffset = (state as? GameState.RemovingTiles)?.let {
+    private fun sizeOffset(
+        x: Int,
+        y: Int,
+        tileSize: Float,
+        tick: Int,
+        state: GameState
+    ): Float {
+        return (state as? GameState.RemovingTiles)?.let {
             val sizeShrinkPerTick = tileSize / 2 / GameView.ticksPerAction
 
             when (it.newBoardAfterRemove[x][y] == null) {
@@ -345,8 +380,16 @@ private class Tile(val type: TileType) {
                 false -> 0f
             }
         } ?: 0f
+    }
 
-        val inputMoveOffset = (state as? GameState.InputDetected)?.let {
+    private fun inputMoveOffset(
+        x: Int,
+        y: Int,
+        tileSize: Float,
+        tick: Int,
+        state: GameState
+    ): Pair<Float, Float> {
+        return (state as? GameState.InputDetected)?.let {
             when (state.x == x && state.y + GameView.numTilesSize == y) {
                 true -> {
                     val moveOffsetPerTick = tileSize / GameView.ticksPerAction
@@ -362,18 +405,6 @@ private class Tile(val type: TileType) {
                 false -> Pair(0f, 0f)
             }
         } ?: Pair(0f, 0f)
-
-
-
-        canvas.drawRoundRect(
-            (x * tileSize) + screenContext.gridStartX + sizeOffset + inputMoveOffset.first,
-            ((y - GameView.numTilesSize) * tileSize) + screenContext.gridStartY + fallingYOffset + sizeOffset + inputMoveOffset.second,
-            (x * tileSize) + tileSize + screenContext.gridStartX - sizeOffset + inputMoveOffset.first,
-            ((y - GameView.numTilesSize) * tileSize) + tileSize + screenContext.gridStartY + fallingYOffset - sizeOffset + inputMoveOffset.second,
-            tileRadius,
-            tileRadius,
-            type.paint
-        )
     }
 }
 
