@@ -59,7 +59,9 @@ class GameView @JvmOverloads constructor(
 
     private fun updateBoard() {
         when (val state = currentState) {
-            is GameState.WaitForInput -> TODO()
+            is GameState.WaitForInput -> {
+                // TODO
+            }
             is GameState.InputDetected -> TODO()
             is GameState.CheckForFallableTiles -> {
 
@@ -156,12 +158,41 @@ class GameView @JvmOverloads constructor(
                     return tilesWithRemoved
                 }
 
-                tiles = tiles.map { column ->
-                    // no elements in list will be null
-                    column.subList(0, numTilesSize) + column.subList(numTilesSize, numTilesSize * 2)
-                        .map { it!! }
+                val tilesTransposed = tiles.transpose2DTileList()
+
+                val transposedRowsWithRemovedMatches = tilesTransposed
+                    .subList(numTilesSize, numTilesSize * 2)
+                    .map { it ->
+                        it
+                            .map { it!! } // no elements in list will be null
+                            .checkVerticalPoints()
+                    }
+
+                val horizontalMatches =
+                    (tilesTransposed.subList(0, numTilesSize) + transposedRowsWithRemovedMatches)
+                        .transpose2DTileList()
+
+                val verticalMatches = tiles.map { column ->
+                    val visibleTiles = column.subList(numTilesSize, numTilesSize * 2)
+                        .map { it!! } // no elements in list will be null
                         .checkVerticalPoints()
+
+                    column.subList(0, numTilesSize) + visibleTiles
                 }
+                assert(horizontalMatches.size == verticalMatches.size)
+                assert(horizontalMatches[0].size == verticalMatches[0].size)
+
+
+                val mergedMatches = verticalMatches.mapIndexed { x, columns ->
+                    columns.mapIndexed { y, verticalMatchTile ->
+                        when(val horizontalMatchTile = horizontalMatches[x][y]) {
+                            null -> horizontalMatchTile
+                            else -> verticalMatchTile
+                        }
+                    }
+                }
+
+                tiles = mergedMatches
 
                 val isBoardSame = tiles.fold(true) { acc, column ->
                     val isColumnSame = column.fold(true) { accColumn, tile ->
@@ -180,6 +211,20 @@ class GameView @JvmOverloads constructor(
         }
     }
 
+    private fun List<List<Tile?>>.transpose2DTileList(): List<List<Tile?>> {
+        val new = this[0].indices
+            .map { this.indices.map { null }.toMutableList<Tile?>() }
+            .toMutableList()
+
+        this.indices.forEach { x ->
+            this[x].indices.forEach { y ->
+                new[y][x] = this[x][y]
+            }
+        }
+
+        return new
+    }
+
     private fun getScreenContext(canvas: Canvas): ScreenContext {
         val gridSize = min(width, height)
 
@@ -195,11 +240,6 @@ class GameView @JvmOverloads constructor(
 
         return ScreenContext(canvas, gridSize, gridStartX, gridStartY)
     }
-
-    // TODO: will be used in checkForPoints
-//    private fun getVisibleTiles(): List<List<Tile?>> {
-//        return tiles.map { it.subList(numTilesSize, numTilesSize * 2) }
-//    }
 
     private fun getInitialBoard(): List<List<Tile?>> {
         return (0 until numTilesSize).map { x ->
@@ -228,7 +268,8 @@ private class Tile(val type: TileType) {
 
         val fallingYOffset = (state as? GameState.TilesFalling)?.let {
             val fallingYOffsetPerTick = tileSize / GameView.ticksPerAction
-            val fallingYOffset = fallingYOffsetPerTick * ((tick - state.startTick) % GameView.ticksPerAction)
+            val fallingYOffset =
+                fallingYOffsetPerTick * ((tick - state.startTick) % GameView.ticksPerAction)
 
             when (state.lowestPosYOfFallableTiles[x] < y) {
                 true -> 0f
