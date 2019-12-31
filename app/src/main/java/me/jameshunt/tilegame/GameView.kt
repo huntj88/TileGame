@@ -18,11 +18,13 @@ class GameView @JvmOverloads constructor(
         const val ticksPerAction = 8
     }
 
-    private var tiles: List<List<Tile?>> = getInitialBoard()
-    private var currentState: GameState = GameState.CheckForFallableTiles()
-    private var tick = 0
+    init {
+        setBackgroundColor(Color.GRAY)
+    }
 
-    private val black = Paint().apply { color = Color.BLACK }
+    private var tiles: List<List<Tile?>> = getInitialBoard()
+    private var currentState: GameState = GameState.CheckForFallableTiles
+    private var tick = 0
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -36,21 +38,7 @@ class GameView @JvmOverloads constructor(
             }
         }
 
-        canvas.drawLine(
-            screenContext.gridStartX.toFloat(),
-            screenContext.gridStartY.toFloat(),
-            screenContext.gridStartX.toFloat() + screenContext.gridSize.toFloat(),
-            screenContext.gridStartY.toFloat(),
-            black
-        )
-
-        canvas.drawLine(
-            screenContext.gridStartX.toFloat(),
-            screenContext.gridStartY.toFloat() + screenContext.gridSize.toFloat(),
-            screenContext.gridStartX.toFloat() + screenContext.gridSize.toFloat(),
-            screenContext.gridStartY.toFloat() + screenContext.gridSize.toFloat(),
-            black
-        )
+        drawEdgesOfBoard(screenContext)
 
         tick += 1
 
@@ -82,11 +70,9 @@ class GameView @JvmOverloads constructor(
                 }
 
                 currentState = when (doneFalling) {
-                    true -> GameState.CheckForPoints()
+                    true -> GameState.CheckForPoints
                     false -> GameState.TilesFalling(tick, lowestPosYOfFallableTiles)
                 }
-
-                updateBoard()
             }
             is GameState.TilesFalling -> {
                 val isStarting = tick == state.startTick
@@ -116,7 +102,7 @@ class GameView @JvmOverloads constructor(
                         arrayOfTiles.shiftTilesInColumnDown(state.lowestPosYOfFallableTiles[index])
                     }
 
-                    currentState = GameState.CheckForFallableTiles()
+                    currentState = GameState.CheckForFallableTiles
                 }
             }
             is GameState.CheckForPoints -> {
@@ -184,7 +170,7 @@ class GameView @JvmOverloads constructor(
 
                 val mergedMatches = verticalMatches.mapIndexed { x, columns ->
                     columns.mapIndexed { y, verticalMatchTile ->
-                        when(val horizontalMatchTile = horizontalMatches[x][y]) {
+                        when (val horizontalMatchTile = horizontalMatches[x][y]) {
                             null -> horizontalMatchTile
                             else -> verticalMatchTile
                         }
@@ -199,7 +185,7 @@ class GameView @JvmOverloads constructor(
                 }
 
                 currentState = when (isBoardSame) {
-                    true -> GameState.WaitForInput()
+                    true -> GameState.WaitForInput
                     false -> GameState.RemovingTiles(tick, mergedMatches)
                 }
             }
@@ -209,7 +195,7 @@ class GameView @JvmOverloads constructor(
                 val isEnding = !isStarting && isStartingOrEnding
                 if (isEnding) {
                     tiles = state.newBoardAfterRemove
-                    currentState = GameState.CheckForFallableTiles()
+                    currentState = GameState.CheckForFallableTiles
                 }
             }
         }
@@ -256,6 +242,41 @@ class GameView @JvmOverloads constructor(
             }
         }
     }
+
+    private val edgeOfBoardColor = Paint().apply { color = Color.DKGRAY }
+    private fun drawEdgesOfBoard(screenContext: ScreenContext) {
+        screenContext.canvas.drawRect(
+            screenContext.gridStartX.toFloat(),
+            0f,
+            screenContext.gridStartX.toFloat() + screenContext.gridSize.toFloat(),
+            screenContext.gridStartY.toFloat(),
+            edgeOfBoardColor
+        )
+
+        screenContext.canvas.drawRect(
+            screenContext.gridStartX.toFloat(),
+            screenContext.gridStartY.toFloat() + screenContext.gridSize.toFloat(),
+            screenContext.gridStartX.toFloat() + screenContext.gridSize.toFloat(),
+            height.toFloat(),
+            edgeOfBoardColor
+        )
+
+        screenContext.canvas.drawRect(
+            0f,
+            0f,
+            screenContext.gridStartX.toFloat(),
+            height.toFloat(),
+            edgeOfBoardColor
+        )
+
+        screenContext.canvas.drawRect(
+            screenContext.gridStartX.toFloat() + screenContext.gridSize.toFloat(),
+            0f,
+            width.toFloat(),
+            height.toFloat(),
+            edgeOfBoardColor
+        )
+    }
 }
 
 data class ScreenContext(
@@ -284,7 +305,7 @@ private class Tile(val type: TileType) {
         val sizeOffset = (state as? GameState.RemovingTiles)?.let {
             val sizeShrinkPerTick = tileSize / 2 / GameView.ticksPerAction
 
-            when(it.newBoardAfterRemove[x][y] == null) {
+            when (it.newBoardAfterRemove[x][y] == null) {
                 true -> tileSize - (sizeShrinkPerTick * ((tick - state.startTick) % GameView.ticksPerAction))
                 false -> 0f
             }
@@ -334,10 +355,11 @@ private enum class TileType {
 typealias PosY = Int
 
 private sealed class GameState {
-    class WaitForInput : GameState()
+    object WaitForInput : GameState()
     class InputDetected : GameState()
-    class CheckForFallableTiles : GameState()
-    class TilesFalling(val startTick: Int, val lowestPosYOfFallableTiles: List<PosY>) : GameState()
-    class CheckForPoints : GameState()
-    class RemovingTiles(val startTick: Int, val newBoardAfterRemove: List<List<Tile?>>) : GameState()
+    object CheckForFallableTiles : GameState()
+    data class TilesFalling(val startTick: Int, val lowestPosYOfFallableTiles: List<PosY>) : GameState()
+    object CheckForPoints : GameState()
+    data class RemovingTiles(val startTick: Int, val newBoardAfterRemove: List<List<Tile?>>) :
+        GameState()
 }
