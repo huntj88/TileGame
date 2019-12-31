@@ -120,7 +120,7 @@ class GameView @JvmOverloads constructor(
                 }
             }
             is GameState.CheckForPoints -> {
-                fun List<Tile>.checkVerticalPoints(): List<Tile?> {
+                fun List<Tile>.checkMatchesInColumnOrTransposedRow(): List<Tile?> {
                     val tilesWithRemoved = this.map { it as Tile? }.toMutableList()
 
                     var indexOfStartMatching = 0
@@ -164,7 +164,7 @@ class GameView @JvmOverloads constructor(
                     .map { it ->
                         it
                             .map { it!! } // no elements in list will be null
-                            .checkVerticalPoints()
+                            .checkMatchesInColumnOrTransposedRow()
                     }
 
                 val horizontalMatches =
@@ -174,7 +174,7 @@ class GameView @JvmOverloads constructor(
                 val verticalMatches = tiles.map { column ->
                     val visibleTiles = column.subList(numTilesSize, numTilesSize * 2)
                         .map { it!! } // no elements in list will be null
-                        .checkVerticalPoints()
+                        .checkMatchesInColumnOrTransposedRow()
 
                     column.subList(0, numTilesSize) + visibleTiles
                 }
