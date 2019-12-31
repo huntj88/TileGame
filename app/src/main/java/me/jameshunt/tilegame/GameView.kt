@@ -117,7 +117,6 @@ class GameView @JvmOverloads constructor(
                     }
 
                     currentState = GameState.CheckForFallableTiles()
-                    updateBoard()
                 }
             }
             is GameState.CheckForPoints -> {
@@ -192,9 +191,7 @@ class GameView @JvmOverloads constructor(
                     }
                 }
 
-                tiles = mergedMatches
-
-                val isBoardSame = tiles.fold(true) { acc, column ->
+                val isBoardSame = mergedMatches.fold(true) { acc, column ->
                     val isColumnSame = column.fold(true) { accColumn, tile ->
                         accColumn && tile != null
                     }
@@ -203,11 +200,13 @@ class GameView @JvmOverloads constructor(
 
                 currentState = when (isBoardSame) {
                     true -> GameState.WaitForInput()
-                    false -> GameState.CheckForFallableTiles()
+                    false -> GameState.RemovingTiles(mergedMatches)
                 }
-                updateBoard()
             }
-            is GameState.RemovingTiles -> TODO()
+            is GameState.RemovingTiles -> {
+                tiles = state.newBoardAfterRemove
+                currentState = GameState.CheckForFallableTiles()
+            }
         }
     }
 
@@ -289,7 +288,7 @@ private class Tile(val type: TileType) {
     }
 }
 
-enum class TileType {
+private enum class TileType {
     One,
     Two,
     Three,
@@ -320,11 +319,11 @@ enum class TileType {
 //typealias PosX = Int
 typealias PosY = Int
 
-sealed class GameState {
+private sealed class GameState {
     class WaitForInput : GameState()
     class InputDetected : GameState()
     class CheckForFallableTiles : GameState()
     class TilesFalling(val startTick: Int, val lowestPosYOfFallableTiles: List<PosY>) : GameState()
     class CheckForPoints : GameState()
-    class RemovingTiles : GameState()
+    class RemovingTiles(val newBoardAfterRemove: List<List<Tile?>>) : GameState()
 }
