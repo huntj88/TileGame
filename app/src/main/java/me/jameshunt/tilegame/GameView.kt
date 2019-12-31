@@ -7,6 +7,7 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import me.jameshunt.tilegame.OnInputTouchListener.*
 import kotlin.math.absoluteValue
 import kotlin.math.floor
 import kotlin.math.min
@@ -24,12 +25,7 @@ class GameView @JvmOverloads constructor(
 
     init {
         setBackgroundColor(Color.GRAY)
-
-        setOnTouchListener(OnInputTouchListener {
-            if (currentState == GameState.WaitForInput) {
-                currentState = GameState.InputDetected(it, tick)
-            }
-        })
+        handleTouchEvents()
     }
 
     private var tiles: List<List<Tile?>> = getInitialBoard()
@@ -79,14 +75,9 @@ class GameView @JvmOverloads constructor(
                 // noOp
             }
             is GameState.InputDetected -> {
-                val xTouchInGrid = state.touchInfo.xTouch - screenContext.gridStartX
-                val xTile = floor(xTouchInGrid / screenContext.gridSize * numTilesSize)
-
-                val yTouchInGrid = state.touchInfo.yTouch - screenContext.gridStartY
-                val yTile = floor(yTouchInGrid / screenContext.gridSize * numTilesSize)
-
-                println("xTile: $xTile, yTile: $yTile")
-                currentState = GameState.WaitForInput
+                onAnimationCompleted(state.startTick) {
+                    currentState = GameState.WaitForInput
+                }
             }
             is GameState.CheckForFallableTiles -> {
 
@@ -232,6 +223,20 @@ class GameView @JvmOverloads constructor(
         }
     }
 
+    private fun handleTouchEvents() {
+        setOnTouchListener(OnInputTouchListener { touchInfo ->
+            if (currentState == GameState.WaitForInput) {
+                val xTouchInGrid = touchInfo.xTouch - screenContext.gridStartX
+                val xTile = floor(xTouchInGrid / screenContext.gridSize * numTilesSize).toInt()
+
+                val yTouchInGrid = touchInfo.yTouch - screenContext.gridStartY
+                val yTile = floor(yTouchInGrid / screenContext.gridSize * numTilesSize).toInt()
+
+                currentState = GameState.InputDetected(xTile, yTile, touchInfo.direction, tick)
+            }
+        })
+    }
+
     private fun onAnimationCompleted(startTick: Int, action: () -> Unit) {
         val isStarting = tick == startTick
         val isStartingOrEnding = (tick - startTick) % ticksPerAction == 0
@@ -310,7 +315,14 @@ data class ScreenContext(
 )
 
 private class Tile(val type: TileType) {
-    fun render(x: Int, y: Int, canvas: Canvas, screenContext: ScreenContext, tick: Int, state: GameState) {
+    fun render(
+        x: Int,
+        y: Int,
+        canvas: Canvas,
+        screenContext: ScreenContext,
+        tick: Int,
+        state: GameState
+    ) {
         val tileSize = screenContext.gridSize / GameView.numTilesSize.toFloat()
         val tileRadius = tileSize / 4f
 
@@ -334,11 +346,30 @@ private class Tile(val type: TileType) {
             }
         } ?: 0f
 
+        val inputMoveOffset = (state as? GameState.InputDetected)?.let {
+            when (state.x == x && state.y + GameView.numTilesSize == y) {
+                true -> {
+                    val moveOffsetPerTick = tileSize / GameView.ticksPerAction
+                    val moveOffset =
+                        moveOffsetPerTick * ((tick - state.startTick) % GameView.ticksPerAction)
+                    when (state.direction) {
+                        Direction.Up -> Pair(0f, -moveOffset)
+                        Direction.Down -> Pair(0f, moveOffset)
+                        Direction.Left -> Pair(-moveOffset, 0f)
+                        Direction.Right -> Pair(moveOffset, 0f)
+                    }
+                }
+                false -> Pair(0f, 0f)
+            }
+        } ?: Pair(0f, 0f)
+
+
+
         canvas.drawRoundRect(
-            (x * tileSize) + screenContext.gridStartX + sizeOffset,
-            ((y - GameView.numTilesSize) * tileSize) + screenContext.gridStartY + fallingYOffset + sizeOffset,
-            (x * tileSize) + tileSize + screenContext.gridStartX - sizeOffset,
-            ((y - GameView.numTilesSize) * tileSize) + tileSize + screenContext.gridStartY + fallingYOffset - sizeOffset,
+            (x * tileSize) + screenContext.gridStartX + sizeOffset + inputMoveOffset.first,
+            ((y - GameView.numTilesSize) * tileSize) + screenContext.gridStartY + fallingYOffset + sizeOffset + inputMoveOffset.second,
+            (x * tileSize) + tileSize + screenContext.gridStartX - sizeOffset + inputMoveOffset.first,
+            ((y - GameView.numTilesSize) * tileSize) + tileSize + screenContext.gridStartY + fallingYOffset - sizeOffset + inputMoveOffset.second,
             tileRadius,
             tileRadius,
             type.paint
@@ -380,8 +411,10 @@ typealias PosY = Int
 private sealed class GameState {
     object WaitForInput : GameState()
     data class InputDetected(
-        val touchInfo: OnInputTouchListener.TouchInfo,
-        val tick: Int
+        val x: Int,
+        val y: Int,
+        val direction: Direction,
+        val startTick: Int
     ) : GameState()
 
     object CheckForFallableTiles : GameState()
@@ -415,7 +448,7 @@ private class OnInputTouchListener(private val inputDetectedHandler: (TouchInfo)
                 val yDiff = event.y - startY
 
                 // pythagorean to check min distance moved
-                if(xDiff.pow(2) + yDiff.pow(2) > (min(v.width, v.height) / 6f).pow(2)) {
+                if (xDiff.pow(2) + yDiff.pow(2) > (min(v.width, v.height) / 10f).pow(2)) {
                     val direction = Direction.from(xDiff, yDiff)
                     inputDetectedHandler(TouchInfo(startX, startY, direction))
                 }
