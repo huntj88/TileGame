@@ -5,8 +5,12 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
+import kotlin.math.absoluteValue
+import kotlin.math.floor
 import kotlin.math.min
+import kotlin.math.pow
 
 class GameView @JvmOverloads constructor(
     context: Context,
@@ -20,25 +24,49 @@ class GameView @JvmOverloads constructor(
 
     init {
         setBackgroundColor(Color.GRAY)
+
+        setOnTouchListener(OnInputTouchListener {
+            if (currentState == GameState.WaitForInput) {
+                currentState = GameState.InputDetected(it, tick)
+            }
+        })
     }
 
     private var tiles: List<List<Tile?>> = getInitialBoard()
     private var currentState: GameState = GameState.CheckForFallableTiles
     private var tick = 0
 
+    // will be instantiated after view is measured.
+    private val screenContext by lazy {
+        assert(height != 0 && width != 0)
+
+        val gridSize = min(width, height)
+
+        val gridStartX = when (width == gridSize) {
+            true -> 0
+            false -> (width - height) / 2
+        }
+
+        val gridStartY = when (height == gridSize) {
+            true -> 0
+            false -> (height - width) / 2
+        }
+
+        ScreenContext(gridSize, gridStartX, gridStartY)
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
         updateBoard()
 
-        val screenContext = getScreenContext(canvas)
         (0 until numTilesSize).forEach { x ->
             (0 until numTilesSize * 2).forEach { y ->
-                tiles[x][y]?.render(x, y, screenContext, tick, currentState)
+                tiles[x][y]?.render(x, y, canvas, screenContext, tick, currentState)
             }
         }
 
-        drawEdgesOfBoard(screenContext)
+        drawEdgesOfBoard(canvas, screenContext)
 
         tick += 1
 
@@ -48,9 +76,18 @@ class GameView @JvmOverloads constructor(
     private fun updateBoard() {
         when (val state = currentState) {
             is GameState.WaitForInput -> {
-                // TODO
+                // noOp
             }
-            is GameState.InputDetected -> TODO()
+            is GameState.InputDetected -> {
+                val xTouchInGrid = state.touchInfo.xTouch - screenContext.gridStartX
+                val xTile = floor(xTouchInGrid / screenContext.gridSize * numTilesSize)
+
+                val yTouchInGrid = state.touchInfo.yTouch - screenContext.gridStartY
+                val yTile = floor(yTouchInGrid / screenContext.gridSize * numTilesSize)
+
+                println("xTile: $xTile, yTile: $yTile")
+                currentState = GameState.WaitForInput
+            }
             is GameState.CheckForFallableTiles -> {
 
                 // find lowest fallable posY of each row
@@ -215,22 +252,6 @@ class GameView @JvmOverloads constructor(
         return new
     }
 
-    private fun getScreenContext(canvas: Canvas): ScreenContext {
-        val gridSize = min(width, height)
-
-        val gridStartX = when (width == gridSize) {
-            true -> 0
-            false -> (width - height) / 2
-        }
-
-        val gridStartY = when (height == gridSize) {
-            true -> 0
-            false -> (height - width) / 2
-        }
-
-        return ScreenContext(canvas, gridSize, gridStartX, gridStartY)
-    }
-
     private fun getInitialBoard(): List<List<Tile?>> {
         return (0 until numTilesSize).map { x ->
             (0 until numTilesSize * 2).map { y ->
@@ -244,8 +265,8 @@ class GameView @JvmOverloads constructor(
     }
 
     private val edgeOfBoardColor = Paint().apply { color = Color.DKGRAY }
-    private fun drawEdgesOfBoard(screenContext: ScreenContext) {
-        screenContext.canvas.drawRect(
+    private fun drawEdgesOfBoard(canvas: Canvas, screenContext: ScreenContext) {
+        canvas.drawRect(
             screenContext.gridStartX.toFloat(),
             0f,
             screenContext.gridStartX.toFloat() + screenContext.gridSize.toFloat(),
@@ -253,7 +274,7 @@ class GameView @JvmOverloads constructor(
             edgeOfBoardColor
         )
 
-        screenContext.canvas.drawRect(
+        canvas.drawRect(
             screenContext.gridStartX.toFloat(),
             screenContext.gridStartY.toFloat() + screenContext.gridSize.toFloat(),
             screenContext.gridStartX.toFloat() + screenContext.gridSize.toFloat(),
@@ -261,7 +282,7 @@ class GameView @JvmOverloads constructor(
             edgeOfBoardColor
         )
 
-        screenContext.canvas.drawRect(
+        canvas.drawRect(
             0f,
             0f,
             screenContext.gridStartX.toFloat(),
@@ -269,7 +290,7 @@ class GameView @JvmOverloads constructor(
             edgeOfBoardColor
         )
 
-        screenContext.canvas.drawRect(
+        canvas.drawRect(
             screenContext.gridStartX.toFloat() + screenContext.gridSize.toFloat(),
             0f,
             width.toFloat(),
@@ -280,14 +301,13 @@ class GameView @JvmOverloads constructor(
 }
 
 data class ScreenContext(
-    val canvas: Canvas,
     val gridSize: Int,
     val gridStartX: Int,
     val gridStartY: Int
 )
 
 private class Tile(val type: TileType) {
-    fun render(x: Int, y: Int, screenContext: ScreenContext, tick: Int, state: GameState) {
+    fun render(x: Int, y: Int, canvas: Canvas, screenContext: ScreenContext, tick: Int, state: GameState) {
         val tileSize = screenContext.gridSize / GameView.numTilesSize.toFloat()
         val tileRadius = tileSize / 4f
 
@@ -311,7 +331,7 @@ private class Tile(val type: TileType) {
             }
         } ?: 0f
 
-        screenContext.canvas.drawRoundRect(
+        canvas.drawRoundRect(
             (x * tileSize) + screenContext.gridStartX + sizeOffset,
             ((y - GameView.numTilesSize) * tileSize) + screenContext.gridStartY + fallingYOffset + sizeOffset,
             (x * tileSize) + tileSize + screenContext.gridStartX - sizeOffset,
@@ -331,13 +351,13 @@ private enum class TileType {
     Five,
     Six;
 
-    companion object {
-        private val paint1 = Paint().apply { color = Color.BLUE }
-        private val paint2 = Paint().apply { color = Color.RED }
-        private val paint3 = Paint().apply { color = Color.GREEN }
-        private val paint4 = Paint().apply { color = Color.CYAN }
-        private val paint5 = Paint().apply { color = Color.MAGENTA }
-        private val paint6 = Paint().apply { color = Color.YELLOW }
+    private companion object {
+        val paint1 = Paint().apply { color = Color.BLUE }
+        val paint2 = Paint().apply { color = Color.RED }
+        val paint3 = Paint().apply { color = Color.GREEN }
+        val paint4 = Paint().apply { color = Color.CYAN }
+        val paint5 = Paint().apply { color = Color.MAGENTA }
+        val paint6 = Paint().apply { color = Color.YELLOW }
     }
 
     val paint: Paint
@@ -356,10 +376,71 @@ typealias PosY = Int
 
 private sealed class GameState {
     object WaitForInput : GameState()
-    class InputDetected : GameState()
+    data class InputDetected(
+        val touchInfo: OnInputTouchListener.TouchInfo,
+        val tick: Int
+    ) : GameState()
+
     object CheckForFallableTiles : GameState()
-    data class TilesFalling(val startTick: Int, val lowestPosYOfFallableTiles: List<PosY>) : GameState()
+    data class TilesFalling(
+        val startTick: Int,
+        val lowestPosYOfFallableTiles: List<PosY>
+    ) : GameState()
+
     object CheckForPoints : GameState()
-    data class RemovingTiles(val startTick: Int, val newBoardAfterRemove: List<List<Tile?>>) :
-        GameState()
+    data class RemovingTiles(
+        val startTick: Int,
+        val newBoardAfterRemove: List<List<Tile?>>
+    ) : GameState()
+}
+
+private class OnInputTouchListener(private val inputDetectedHandler: (TouchInfo) -> Unit) :
+    View.OnTouchListener {
+
+    private var startX: Float = 0f
+    private var startY: Float = 0f
+
+    override fun onTouch(v: View, event: MotionEvent): Boolean {
+
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                startX = event.x
+                startY = event.y
+            }
+            MotionEvent.ACTION_UP -> {
+                val xDiff = event.x - startX
+                val yDiff = event.y - startY
+
+                // pythagorean to check min distance moved
+                if(xDiff.pow(2) + yDiff.pow(2) > (min(v.width, v.height) / 6f).pow(2)) {
+                    val direction = Direction.from(xDiff, yDiff)
+                    inputDetectedHandler(TouchInfo(startX, startY, direction))
+                }
+            }
+        }
+
+        return true
+    }
+
+    data class TouchInfo(
+        val xTouch: Float,
+        val yTouch: Float,
+        val direction: Direction
+    )
+
+    enum class Direction {
+        Up,
+        Down,
+        Left,
+        Right;
+
+        companion object {
+            fun from(xDiff: Float, yDiff: Float): Direction {
+                return when (xDiff.absoluteValue > yDiff.absoluteValue) {
+                    true -> if (xDiff > 0) Right else Left
+                    false -> if (yDiff > 0) Down else Up
+                }
+            }
+        }
+    }
 }
