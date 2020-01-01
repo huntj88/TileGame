@@ -9,10 +9,7 @@ import android.view.MotionEvent
 import android.view.View
 import me.jameshunt.tilegame.GameState.*
 import me.jameshunt.tilegame.OnInputTouchListener.*
-import kotlin.math.absoluteValue
-import kotlin.math.floor
-import kotlin.math.min
-import kotlin.math.pow
+import kotlin.math.*
 
 class GameView @JvmOverloads constructor(
     context: Context,
@@ -503,7 +500,6 @@ private class OnInputTouchListener(private val inputDetectedHandler: (TouchInfo)
     private var startY: Float = 0f
 
     override fun onTouch(v: View, event: MotionEvent): Boolean {
-
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 startX = event.x
@@ -513,8 +509,8 @@ private class OnInputTouchListener(private val inputDetectedHandler: (TouchInfo)
                 val xDiff = event.x - startX
                 val yDiff = event.y - startY
 
-                // pythagorean to check min distance moved
-                if (xDiff.pow(2) + yDiff.pow(2) > (min(v.width, v.height) / 10f).pow(2)) {
+                val minMoveDistance = min(v.width, v.height) / (GameView.numTilesSize * 3f)
+                if (max(xDiff.absoluteValue, yDiff.absoluteValue) > minMoveDistance) {
                     val direction = Direction.from(xDiff, yDiff)
                     inputDetectedHandler(TouchInfo(startX, startY, direction))
                 }
