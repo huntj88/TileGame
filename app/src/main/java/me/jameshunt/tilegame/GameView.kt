@@ -19,6 +19,7 @@ class GameView @JvmOverloads constructor(
     companion object {
         const val numTilesSize = 8
         const val ticksPerAction = 8
+        const val numTileTypes = 4 // max of 6 at the moment, add more at bottom
     }
 
     init {
@@ -123,7 +124,10 @@ class GameView @JvmOverloads constructor(
                     fun List<Tile?>.shiftTilesInColumnDown(lowestFallableTile: PosY): List<Tile?> {
                         if (!this.contains(null)) return this
 
-                        val newTopTile = listOf(Tile(TileType.values().random())) as List<Tile?>
+                        val newTopTile = listOf(
+                            Tile(TileType.values().slice(0 until numTileTypes).random())
+                        ) as List<Tile?>
+
                         val tilesThatFell = newTopTile + this.subList(0, lowestFallableTile + 1)
 
                         val indexOfBottomTile = (numTilesSize * 2) - 1
@@ -284,7 +288,7 @@ class GameView @JvmOverloads constructor(
             (0 until numTilesSize * 2).map { y ->
                 when (y < 8 && (y + x) % 3 == 0) {
 //                when (y < numTilesSize) {
-                    true -> Tile(TileType.values().random()) // TODO: start with no auto solvable
+                    true -> Tile(TileType.values().slice(0 until numTileTypes).random()) // TODO: start with no auto solvable
                     false -> null
                 }
             }
