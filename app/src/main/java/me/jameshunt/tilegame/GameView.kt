@@ -77,7 +77,20 @@ class GameView @JvmOverloads constructor(
             }
             is InputDetected -> {
                 onAnimationCompleted(state.startTick) {
-                    currentState = WaitForInput
+                    val touchedTile = tiles[state.touched.x][state.touched.y + numTilesSize]
+                    val switchWithTile = tiles[state.switchWith.x][state.switchWith.y + numTilesSize]
+
+                    tiles = tiles.map { column ->
+                        column.map { tile ->
+                            when (tile) {
+                                touchedTile -> switchWithTile
+                                switchWithTile -> touchedTile
+                                else -> tile
+                            }
+                        }
+                    }
+
+                    currentState = CheckForPoints
                 }
             }
             is CheckForFallableTiles -> {
