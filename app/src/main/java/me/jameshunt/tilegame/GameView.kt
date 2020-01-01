@@ -7,6 +7,7 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import me.jameshunt.tilegame.GameState.*
 import me.jameshunt.tilegame.OnInputTouchListener.*
 import kotlin.math.absoluteValue
 import kotlin.math.floor
@@ -29,7 +30,7 @@ class GameView @JvmOverloads constructor(
     }
 
     private var tiles: List<List<Tile?>> = getInitialBoard()
-    private var currentState: GameState = GameState.CheckForFallableTiles
+    private var currentState: GameState = CheckForFallableTiles
     private var tick = 0
 
     // will be instantiated after view is measured.
@@ -71,15 +72,15 @@ class GameView @JvmOverloads constructor(
 
     private fun updateBoard() {
         when (val state = currentState) {
-            is GameState.WaitForInput -> {
+            is WaitForInput -> {
                 // noOp
             }
-            is GameState.InputDetected -> {
+            is InputDetected -> {
                 onAnimationCompleted(state.startTick) {
-                    currentState = GameState.WaitForInput
+                    currentState = WaitForInput
                 }
             }
-            is GameState.CheckForFallableTiles -> {
+            is CheckForFallableTiles -> {
 
                 // find lowest fallable posY of each row
                 // if any fallable tiles set current state to TilesFalling
@@ -98,11 +99,11 @@ class GameView @JvmOverloads constructor(
                 }
 
                 currentState = when (doneFalling) {
-                    true -> GameState.CheckForPoints
-                    false -> GameState.TilesFalling(tick, lowestPosYOfFallableTiles)
+                    true -> CheckForPoints
+                    false -> TilesFalling(tick, lowestPosYOfFallableTiles)
                 }
             }
-            is GameState.TilesFalling -> {
+            is TilesFalling -> {
                 onAnimationCompleted(state.startTick) {
 
                     // shift ones that fell to tile spot below
@@ -127,10 +128,10 @@ class GameView @JvmOverloads constructor(
                         arrayOfTiles.shiftTilesInColumnDown(state.lowestPosYOfFallableTiles[index])
                     }
 
-                    currentState = GameState.CheckForFallableTiles
+                    currentState = CheckForFallableTiles
                 }
             }
-            is GameState.CheckForPoints -> {
+            is CheckForPoints -> {
                 fun List<Tile>.checkMatchesInColumnOrTransposedRow(): List<Tile?> {
                     val tilesWithRemoved = this.map { it as Tile? }.toMutableList()
 
@@ -210,14 +211,14 @@ class GameView @JvmOverloads constructor(
                 }
 
                 currentState = when (isBoardSame) {
-                    true -> GameState.WaitForInput
-                    false -> GameState.RemovingTiles(tick, mergedMatches)
+                    true -> WaitForInput
+                    false -> RemovingTiles(tick, mergedMatches)
                 }
             }
-            is GameState.RemovingTiles -> {
+            is RemovingTiles -> {
                 onAnimationCompleted(state.startTick) {
                     tiles = state.newBoardAfterRemove
-                    currentState = GameState.CheckForFallableTiles
+                    currentState = CheckForFallableTiles
                 }
             }
         }
@@ -225,14 +226,22 @@ class GameView @JvmOverloads constructor(
 
     private fun handleTouchEvents() {
         setOnTouchListener(OnInputTouchListener { touchInfo ->
-            if (currentState == GameState.WaitForInput) {
+            if (currentState == WaitForInput) {
                 val xTouchInGrid = touchInfo.xTouch - screenContext.gridStartX
                 val xTile = floor(xTouchInGrid / screenContext.gridSize * numTilesSize).toInt()
 
                 val yTouchInGrid = touchInfo.yTouch - screenContext.gridStartY
                 val yTile = floor(yTouchInGrid / screenContext.gridSize * numTilesSize).toInt()
 
-                currentState = GameState.InputDetected(xTile, yTile, touchInfo.direction, tick)
+                val touched = InputDetected.TileCoordinate(xTile, yTile)
+                val switchWith = when (touchInfo.direction) {
+                    Direction.Up -> InputDetected.TileCoordinate(xTile, yTile - 1)
+                    Direction.Down -> InputDetected.TileCoordinate(xTile, yTile + 1)
+                    Direction.Left -> InputDetected.TileCoordinate(xTile - 1, yTile)
+                    Direction.Right -> InputDetected.TileCoordinate(xTile + 1, yTile)
+                }
+
+                currentState = InputDetected(touched, switchWith, touchInfo.direction, tick)
             }
         })
     }
@@ -353,7 +362,7 @@ private class Tile(val type: TileType) {
         tick: Int,
         state: GameState
     ): Float {
-        return (state as? GameState.TilesFalling)?.let {
+        return (state as? TilesFalling)?.let {
             val fallingYOffsetPerTick = tileSize / GameView.ticksPerAction
             val fallingYOffset =
                 fallingYOffsetPerTick * ((tick - state.startTick) % GameView.ticksPerAction)
@@ -372,7 +381,7 @@ private class Tile(val type: TileType) {
         tick: Int,
         state: GameState
     ): Float {
-        return (state as? GameState.RemovingTiles)?.let {
+        return (state as? RemovingTiles)?.let {
             val sizeShrinkPerTick = tileSize / 2 / GameView.ticksPerAction
 
             when (it.newBoardAfterRemove[x][y] == null) {
@@ -389,20 +398,28 @@ private class Tile(val type: TileType) {
         tick: Int,
         state: GameState
     ): Pair<Float, Float> {
-        return (state as? GameState.InputDetected)?.let {
-            when (state.x == x && state.y + GameView.numTilesSize == y) {
-                true -> {
-                    val moveOffsetPerTick = tileSize / GameView.ticksPerAction
-                    val moveOffset =
-                        moveOffsetPerTick * ((tick - state.startTick) % GameView.ticksPerAction)
-                    when (state.direction) {
-                        Direction.Up -> Pair(0f, -moveOffset)
-                        Direction.Down -> Pair(0f, moveOffset)
-                        Direction.Left -> Pair(-moveOffset, 0f)
-                        Direction.Right -> Pair(moveOffset, 0f)
-                    }
+        return (state as? InputDetected)?.let {
+            val isTouchedTile = state.touched.x == x && state.touched.y + GameView.numTilesSize == y
+            val isSwitchWithTile =
+                state.switchWith.x == x && state.switchWith.y + GameView.numTilesSize == y
+
+            val offsetPerTick = tileSize / GameView.ticksPerAction
+            val moveOffset = offsetPerTick * ((tick - state.startTick) % GameView.ticksPerAction)
+
+            when {
+                isTouchedTile -> when (state.direction) {
+                    Direction.Up -> Pair(0f, -moveOffset)
+                    Direction.Down -> Pair(0f, moveOffset)
+                    Direction.Left -> Pair(-moveOffset, 0f)
+                    Direction.Right -> Pair(moveOffset, 0f)
                 }
-                false -> Pair(0f, 0f)
+                isSwitchWithTile -> when (state.direction) {
+                    Direction.Up -> Pair(0f, moveOffset)
+                    Direction.Down -> Pair(0f, -moveOffset)
+                    Direction.Left -> Pair(moveOffset, 0f)
+                    Direction.Right -> Pair(-moveOffset, 0f)
+                }
+                else -> Pair(0f, 0f)
             }
         } ?: Pair(0f, 0f)
     }
@@ -442,11 +459,16 @@ typealias PosY = Int
 private sealed class GameState {
     object WaitForInput : GameState()
     data class InputDetected(
-        val x: Int,
-        val y: Int,
+        val touched: TileCoordinate,
+        val switchWith: TileCoordinate,
         val direction: Direction,
         val startTick: Int
-    ) : GameState()
+    ) : GameState() {
+        data class TileCoordinate(
+            val x: Int,
+            val y: Int
+        )
+    }
 
     object CheckForFallableTiles : GameState()
     data class TilesFalling(
