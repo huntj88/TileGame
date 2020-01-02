@@ -95,9 +95,9 @@ class Tile(val type: TileType) {
 
             when (it.newBoardAfterRemove[x][y] == null) {
                 true -> tileSize - (sizeShrinkPerTick * ((tick - state.startTick) % GameView.ticksPerAction))
-                false -> 0f
+                false -> 6f
             }
-        } ?: 0f
+        } ?: 6f
     }
 
     private fun inputMoveOffset(

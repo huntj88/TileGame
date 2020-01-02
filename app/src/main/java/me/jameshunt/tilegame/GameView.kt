@@ -105,7 +105,7 @@ class GameView @JvmOverloads constructor(
                 }
                 val doneFalling = lowestPosYOfFallableTiles.foldIndexed(true) { index, acc, posY ->
                     val indexOfBottomTile = (numTilesSize * 2) - 1
-                    acc && (posY == indexOfBottomTile || !tiles[index].contains(null))
+                    acc && (posY == indexOfBottomTile || null !in tiles[index])
                 }
 
                 currentState = when (doneFalling) {
@@ -120,7 +120,7 @@ class GameView @JvmOverloads constructor(
                     // set current state to CheckForFallableTiles
 
                     fun List<Tile?>.shiftTilesInColumnDown(lowestFallableTile: TileYCoord): List<Tile?> {
-                        if (!this.contains(null)) return this
+                        if (null !in this) return this
 
                         val newTopTile = listOf(
                             Tile(TileType.values().slice(0 until numTileTypes).random())
@@ -216,9 +216,7 @@ class GameView @JvmOverloads constructor(
                 }
 
                 val isBoardSame = mergedMatches.fold(true) { acc, column ->
-                    val isColumnSame = column.fold(true) { accColumn, tile ->
-                        accColumn && tile != null
-                    }
+                    val isColumnSame = null !in column
                     acc && isColumnSame
                 }
 
@@ -256,7 +254,7 @@ class GameView @JvmOverloads constructor(
                 val validXMove = switchWith.x in (0 until numTilesSize)
                 val validYMove = switchWith.y in (0 until numTilesSize)
 
-                if(validXMove && validYMove) {
+                if (validXMove && validYMove) {
                     currentState = InputDetected(touched, switchWith, touchInfo.direction, tick)
                 }
             }
