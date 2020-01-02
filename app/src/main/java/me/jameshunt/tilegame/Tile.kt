@@ -34,8 +34,8 @@ enum class TileType {
 
 class Tile(val type: TileType) {
     fun render(
-        x: Int,
-        y: Int,
+        x: TileXCoord,
+        y: TileYCoord,
         canvas: Canvas,
         screenContext: ScreenContext,
         tick: Int,
@@ -65,8 +65,8 @@ class Tile(val type: TileType) {
     }
 
     private fun fallingOffset(
-        x: Int,
-        y: Int,
+        x: TileXCoord,
+        y: TileYCoord,
         tileSize: Float,
         tick: Int,
         state: GameState
@@ -84,8 +84,8 @@ class Tile(val type: TileType) {
     }
 
     private fun sizeOffset(
-        x: Int,
-        y: Int,
+        x: TileXCoord,
+        y: TileYCoord,
         tileSize: Float,
         tick: Int,
         state: GameState
@@ -101,8 +101,8 @@ class Tile(val type: TileType) {
     }
 
     private fun inputMoveOffset(
-        x: Int,
-        y: Int,
+        x: TileXCoord,
+        y: TileYCoord,
         tileSize: Float,
         tick: Int,
         state: GameState

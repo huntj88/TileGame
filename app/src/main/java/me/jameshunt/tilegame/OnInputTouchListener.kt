@@ -6,8 +6,9 @@ import kotlin.math.absoluteValue
 import kotlin.math.max
 import kotlin.math.min
 
-class OnInputTouchListener(private val inputDetectedHandler: (TouchInfo) -> Unit) :
-    View.OnTouchListener {
+class OnInputTouchListener(
+    private val inputDetectedHandler: (TouchInfo) -> Unit
+) : View.OnTouchListener {
 
     private var startX: Float = 0f
     private var startY: Float = 0f
@@ -22,10 +23,7 @@ class OnInputTouchListener(private val inputDetectedHandler: (TouchInfo) -> Unit
                 val xDiff = event.x - startX
                 val yDiff = event.y - startY
 
-                val minMoveDistance = min(
-                    v.width,
-                    v.height
-                ) / (GameView.numTilesSize * 3f)
+                val minMoveDistance = min(v.width, v.height) / (GameView.numTilesSize * 3f)
                 if (max(xDiff.absoluteValue, yDiff.absoluteValue) > minMoveDistance) {
                     val direction = Direction.from(xDiff, yDiff)
                     inputDetectedHandler(TouchInfo(startX, startY, direction))

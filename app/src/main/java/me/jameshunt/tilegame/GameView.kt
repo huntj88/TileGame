@@ -96,7 +96,6 @@ class GameView @JvmOverloads constructor(
                 // find lowest fallable posY of each row
                 // if any fallable tiles set current state to TilesFalling
                 // if no fallable tiles set current state to CheckForPoints
-                // call updateBoard again
 
                 val lowestPosYOfFallableTiles = tiles.map { tileColumn ->
                     val lowestPosOfNullTile = tileColumn.indexOfLast { it == null }
@@ -119,7 +118,6 @@ class GameView @JvmOverloads constructor(
 
                     // shift ones that fell to tile spot below
                     // set current state to CheckForFallableTiles
-                    // call updateBoard again
 
                     fun List<Tile?>.shiftTilesInColumnDown(lowestFallableTile: TileYCoord): List<Tile?> {
                         if (!this.contains(null)) return this
@@ -286,9 +284,8 @@ class GameView @JvmOverloads constructor(
     private fun getInitialBoard(): List<List<Tile?>> {
         return (0 until numTilesSize).map { x ->
             (0 until numTilesSize * 2).map { y ->
-                when (y < 8 && (y + x) % 3 == 0) {
-//                when (y < numTilesSize) {
-                    true -> Tile(TileType.values().slice(0 until numTileTypes).random()) // TODO: start with no auto solvable
+                when (y < numTilesSize && (y + x) % 3 == 0) {
+                    true -> Tile(TileType.values().slice(0 until numTileTypes).random())
                     false -> null
                 }
             }
