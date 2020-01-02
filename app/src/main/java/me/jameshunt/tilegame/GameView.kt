@@ -17,7 +17,6 @@ class GameView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
     companion object {
         const val numTilesSize = 8
-        const val ticksPerAction = 8
         const val numTileTypes = 4 // max of 6 at the moment, add more in TileType
     }
 
@@ -73,7 +72,7 @@ class GameView @JvmOverloads constructor(
                 // noOp
             }
             is InputDetected -> {
-                onAnimationCompleted(state.startTick) {
+                state.onAnimationCompleted(state.startTick) {
                     val touchedTile = tiles[state.touched.x][state.touched.y + numTilesSize]
                     val switchWithTile =
                         tiles[state.switchWith.x][state.switchWith.y + numTilesSize]
@@ -114,7 +113,7 @@ class GameView @JvmOverloads constructor(
                 }
             }
             is TilesFalling -> {
-                onAnimationCompleted(state.startTick) {
+                state.onAnimationCompleted(state.startTick) {
 
                     // shift ones that fell to tile spot below
                     // set current state to CheckForFallableTiles
@@ -226,7 +225,7 @@ class GameView @JvmOverloads constructor(
                 }
             }
             is RemovingTiles -> {
-                onAnimationCompleted(state.startTick) {
+                state.onAnimationCompleted(state.startTick) {
                     tiles = state.newBoardAfterRemove
                     currentState = CheckForFallableTiles
                 }
@@ -261,9 +260,9 @@ class GameView @JvmOverloads constructor(
         })
     }
 
-    private fun onAnimationCompleted(startTick: Int, action: () -> Unit) {
+    private fun GameState.onAnimationCompleted(startTick: Int, action: () -> Unit) {
         val isStarting = tick == startTick
-        val isStartingOrEnding = (tick - startTick) % ticksPerAction == 0
+        val isStartingOrEnding = (tick - startTick) % tickDuration == 0
         val isEnding = !isStarting && isStartingOrEnding
         if (isEnding) {
             action()
@@ -365,4 +364,12 @@ sealed class GameState {
         val startTick: Int,
         val newBoardAfterRemove: List<List<Tile?>>
     ) : GameState()
+
+    val tickDuration: Int
+        get() = when(this) {
+            is InputDetected -> 8
+            is TilesFalling -> 8
+            is RemovingTiles -> 24
+            else -> TODO(this.toString())
+        }
 }

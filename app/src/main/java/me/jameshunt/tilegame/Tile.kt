@@ -72,9 +72,9 @@ class Tile(val type: TileType) {
         state: GameState
     ): Float {
         return (state as? GameState.TilesFalling)?.let {
-            val fallingYOffsetPerTick = tileSize / GameView.ticksPerAction
+            val fallingYOffsetPerTick = tileSize / state.tickDuration
             val fallingYOffset =
-                fallingYOffsetPerTick * ((tick - state.startTick) % GameView.ticksPerAction)
+                fallingYOffsetPerTick * ((tick - state.startTick) % state.tickDuration)
 
             when (state.lowestPosYOfFallableTiles[x] < y) {
                 true -> 0f
@@ -91,10 +91,10 @@ class Tile(val type: TileType) {
         state: GameState
     ): Float {
         return (state as? GameState.RemovingTiles)?.let {
-            val sizeShrinkPerTick = tileSize / 2 / GameView.ticksPerAction
+            val sizeShrinkPerTick = tileSize / 2 / state.tickDuration
 
             when (it.newBoardAfterRemove[x][y] == null) {
-                true -> tileSize - (sizeShrinkPerTick * ((tick - state.startTick) % GameView.ticksPerAction))
+                true -> (tileSize / 14) + tileSize - (sizeShrinkPerTick * ((tick - state.startTick) % state.tickDuration))
                 false -> 6f
             }
         } ?: 6f
@@ -112,8 +112,8 @@ class Tile(val type: TileType) {
             val isSwitchWithTile =
                 state.switchWith.x == x && state.switchWith.y + GameView.numTilesSize == y
 
-            val offsetPerTick = tileSize / GameView.ticksPerAction
-            val moveOffset = offsetPerTick * ((tick - state.startTick) % GameView.ticksPerAction)
+            val offsetPerTick = tileSize / state.tickDuration
+            val moveOffset = offsetPerTick * ((tick - state.startTick) % state.tickDuration)
 
             when {
                 isTouchedTile -> when (state.direction) {
