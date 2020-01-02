@@ -54,5 +54,12 @@ class OnInputTouchListener(
                 }
             }
         }
+
+        fun opposite() = when(this) {
+            Up -> Down
+            Down -> Up
+            Left -> Right
+            Right -> Left
+        }
     }
 }

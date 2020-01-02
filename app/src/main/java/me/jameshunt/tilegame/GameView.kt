@@ -87,7 +87,10 @@ class GameView @JvmOverloads constructor(
                         }
                     }
 
-                    currentState = CheckForPoints
+                    currentState = when(state.switchBackIfNoPoints) {
+                        true -> CheckForPoints(state)
+                        false -> WaitForInput
+                    }
                 }
             }
             is CheckForFallableTiles -> {
@@ -108,7 +111,7 @@ class GameView @JvmOverloads constructor(
                 }
 
                 currentState = when (doneFalling) {
-                    true -> CheckForPoints
+                    true -> CheckForPoints(null)
                     false -> TilesFalling(tick, lowestPosYOfFallableTiles)
                 }
             }
@@ -220,7 +223,16 @@ class GameView @JvmOverloads constructor(
                 }
 
                 currentState = when (isBoardSame) {
-                    true -> WaitForInput
+                    true -> when(state.previousInput == null) {
+                        true -> WaitForInput
+                        false -> InputDetected(
+                            touched = state.previousInput.switchWith,
+                            switchWith = state.previousInput.touched,
+                            direction = state.previousInput.direction.opposite(),
+                            startTick = tick,
+                            switchBackIfNoPoints = false
+                        )
+                    }
                     false -> RemovingTiles(tick, mergedMatches)
                 }
             }
@@ -345,7 +357,8 @@ sealed class GameState {
         val touched: TileCoordinate,
         val switchWith: TileCoordinate,
         val direction: Direction,
-        val startTick: Int
+        val startTick: Int,
+        val switchBackIfNoPoints: Boolean = true
     ) : GameState() {
         data class TileCoordinate(
             val x: TileXCoord,
@@ -359,7 +372,7 @@ sealed class GameState {
         val lowestPosYOfFallableTiles: List<TileYCoord>
     ) : GameState()
 
-    object CheckForPoints : GameState()
+    data class CheckForPoints(val previousInput: InputDetected?) : GameState()
     data class RemovingTiles(
         val startTick: Int,
         val newBoardAfterRemove: List<List<Tile?>>
