@@ -253,7 +253,12 @@ class GameView @JvmOverloads constructor(
                     Direction.Right -> InputDetected.TileCoordinate(xTile + 1, yTile)
                 }
 
-                currentState = InputDetected(touched, switchWith, touchInfo.direction, tick)
+                val validXMove = switchWith.x in (0 until numTilesSize)
+                val validYMove = switchWith.y in (0 until numTilesSize)
+
+                if(validXMove && validYMove) {
+                    currentState = InputDetected(touched, switchWith, touchInfo.direction, tick)
+                }
             }
         })
     }
