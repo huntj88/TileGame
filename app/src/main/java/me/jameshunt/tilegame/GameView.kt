@@ -5,7 +5,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
-import android.view.MotionEvent
 import android.view.View
 import me.jameshunt.tilegame.GameState.*
 import me.jameshunt.tilegame.OnInputTouchListener.*
@@ -19,7 +18,7 @@ class GameView @JvmOverloads constructor(
     companion object {
         const val numTilesSize = 8
         const val ticksPerAction = 8
-        const val numTileTypes = 4 // max of 6 at the moment, add more at bottom
+        const val numTileTypes = 4 // max of 6 at the moment, add more in TileType
     }
 
     init {
@@ -56,7 +55,7 @@ class GameView @JvmOverloads constructor(
         updateBoard()
 
         (0 until numTilesSize).forEach { x ->
-            (0 until numTilesSize * 2).forEach { y ->
+            (numTilesSize - 1 until numTilesSize * 2).forEach { y ->
                 tiles[x][y]?.render(x, y, canvas, screenContext, tick, currentState)
             }
         }
@@ -76,7 +75,8 @@ class GameView @JvmOverloads constructor(
             is InputDetected -> {
                 onAnimationCompleted(state.startTick) {
                     val touchedTile = tiles[state.touched.x][state.touched.y + numTilesSize]
-                    val switchWithTile = tiles[state.switchWith.x][state.switchWith.y + numTilesSize]
+                    val switchWithTile =
+                        tiles[state.switchWith.x][state.switchWith.y + numTilesSize]
 
                     tiles = tiles.map { column ->
                         column.map { tile ->
@@ -102,7 +102,7 @@ class GameView @JvmOverloads constructor(
                     val lowestPosOfNullTile = tileColumn.indexOfLast { it == null }
                     (0 until lowestPosOfNullTile)
                         .map { tileColumn[it] }
-                        .indexOfLast { it != null } as PosY
+                        .indexOfLast { it != null } as TileYCoord
                 }
                 val doneFalling = lowestPosYOfFallableTiles.foldIndexed(true) { index, acc, posY ->
                     val indexOfBottomTile = (numTilesSize * 2) - 1
@@ -121,7 +121,7 @@ class GameView @JvmOverloads constructor(
                     // set current state to CheckForFallableTiles
                     // call updateBoard again
 
-                    fun List<Tile?>.shiftTilesInColumnDown(lowestFallableTile: PosY): List<Tile?> {
+                    fun List<Tile?>.shiftTilesInColumnDown(lowestFallableTile: TileYCoord): List<Tile?> {
                         if (!this.contains(null)) return this
 
                         val newTopTile = listOf(
@@ -337,140 +337,10 @@ data class ScreenContext(
     val gridStartY: Int
 )
 
-private class Tile(val type: TileType) {
-    fun render(
-        x: Int,
-        y: Int,
-        canvas: Canvas,
-        screenContext: ScreenContext,
-        tick: Int,
-        state: GameState
-    ) {
-        val tileSize = screenContext.gridSize / GameView.numTilesSize.toFloat()
-        val tileRadius = tileSize / 4f
+typealias TileXCoord = Int
+typealias TileYCoord = Int
 
-        val fallingYOffset = fallingOffset(x, y, tileSize, tick, state)
-        val sizeOffset = sizeOffset(x, y, tileSize, tick, state)
-        val inputMoveOffset = inputMoveOffset(x, y, tileSize, tick, state)
-
-        val leftOffset = sizeOffset + inputMoveOffset.first
-        val topOffset = fallingYOffset + sizeOffset + inputMoveOffset.second
-        val rightOffset = inputMoveOffset.first - sizeOffset
-        val bottomOffset = fallingYOffset - sizeOffset + inputMoveOffset.second
-
-        canvas.drawRoundRect(
-            (x * tileSize) + screenContext.gridStartX + leftOffset,
-            ((y - GameView.numTilesSize) * tileSize) + screenContext.gridStartY + topOffset,
-            (x * tileSize) + tileSize + screenContext.gridStartX + rightOffset,
-            ((y - GameView.numTilesSize) * tileSize) + tileSize + screenContext.gridStartY + bottomOffset,
-            tileRadius,
-            tileRadius,
-            type.paint
-        )
-    }
-
-    private fun fallingOffset(
-        x: Int,
-        y: Int,
-        tileSize: Float,
-        tick: Int,
-        state: GameState
-    ): Float {
-        return (state as? TilesFalling)?.let {
-            val fallingYOffsetPerTick = tileSize / GameView.ticksPerAction
-            val fallingYOffset =
-                fallingYOffsetPerTick * ((tick - state.startTick) % GameView.ticksPerAction)
-
-            when (state.lowestPosYOfFallableTiles[x] < y) {
-                true -> 0f
-                false -> fallingYOffset
-            }
-        } ?: 0f
-    }
-
-    private fun sizeOffset(
-        x: Int,
-        y: Int,
-        tileSize: Float,
-        tick: Int,
-        state: GameState
-    ): Float {
-        return (state as? RemovingTiles)?.let {
-            val sizeShrinkPerTick = tileSize / 2 / GameView.ticksPerAction
-
-            when (it.newBoardAfterRemove[x][y] == null) {
-                true -> tileSize - (sizeShrinkPerTick * ((tick - state.startTick) % GameView.ticksPerAction))
-                false -> 0f
-            }
-        } ?: 0f
-    }
-
-    private fun inputMoveOffset(
-        x: Int,
-        y: Int,
-        tileSize: Float,
-        tick: Int,
-        state: GameState
-    ): Pair<Float, Float> {
-        return (state as? InputDetected)?.let {
-            val isTouchedTile = state.touched.x == x && state.touched.y + GameView.numTilesSize == y
-            val isSwitchWithTile =
-                state.switchWith.x == x && state.switchWith.y + GameView.numTilesSize == y
-
-            val offsetPerTick = tileSize / GameView.ticksPerAction
-            val moveOffset = offsetPerTick * ((tick - state.startTick) % GameView.ticksPerAction)
-
-            when {
-                isTouchedTile -> when (state.direction) {
-                    Direction.Up -> Pair(0f, -moveOffset)
-                    Direction.Down -> Pair(0f, moveOffset)
-                    Direction.Left -> Pair(-moveOffset, 0f)
-                    Direction.Right -> Pair(moveOffset, 0f)
-                }
-                isSwitchWithTile -> when (state.direction) {
-                    Direction.Up -> Pair(0f, moveOffset)
-                    Direction.Down -> Pair(0f, -moveOffset)
-                    Direction.Left -> Pair(moveOffset, 0f)
-                    Direction.Right -> Pair(-moveOffset, 0f)
-                }
-                else -> Pair(0f, 0f)
-            }
-        } ?: Pair(0f, 0f)
-    }
-}
-
-private enum class TileType {
-    One,
-    Two,
-    Three,
-    Four,
-    Five,
-    Six;
-
-    private companion object {
-        val paint1 = Paint().apply { color = Color.BLUE }
-        val paint2 = Paint().apply { color = Color.RED }
-        val paint3 = Paint().apply { color = Color.GREEN }
-        val paint4 = Paint().apply { color = Color.CYAN }
-        val paint5 = Paint().apply { color = Color.MAGENTA }
-        val paint6 = Paint().apply { color = Color.YELLOW }
-    }
-
-    val paint: Paint
-        get() = when (this) {
-            One -> paint1
-            Two -> paint2
-            Three -> paint3
-            Four -> paint4
-            Five -> paint5
-            Six -> paint6
-        }
-}
-
-//typealias PosX = Int
-typealias PosY = Int
-
-private sealed class GameState {
+sealed class GameState {
     object WaitForInput : GameState()
     data class InputDetected(
         val touched: TileCoordinate,
@@ -479,15 +349,15 @@ private sealed class GameState {
         val startTick: Int
     ) : GameState() {
         data class TileCoordinate(
-            val x: Int,
-            val y: Int
+            val x: TileXCoord,
+            val y: TileYCoord
         )
     }
 
     object CheckForFallableTiles : GameState()
     data class TilesFalling(
         val startTick: Int,
-        val lowestPosYOfFallableTiles: List<PosY>
+        val lowestPosYOfFallableTiles: List<TileYCoord>
     ) : GameState()
 
     object CheckForPoints : GameState()
@@ -495,54 +365,4 @@ private sealed class GameState {
         val startTick: Int,
         val newBoardAfterRemove: List<List<Tile?>>
     ) : GameState()
-}
-
-private class OnInputTouchListener(private val inputDetectedHandler: (TouchInfo) -> Unit) :
-    View.OnTouchListener {
-
-    private var startX: Float = 0f
-    private var startY: Float = 0f
-
-    override fun onTouch(v: View, event: MotionEvent): Boolean {
-        when (event.action) {
-            MotionEvent.ACTION_DOWN -> {
-                startX = event.x
-                startY = event.y
-            }
-            MotionEvent.ACTION_UP -> {
-                val xDiff = event.x - startX
-                val yDiff = event.y - startY
-
-                val minMoveDistance = min(v.width, v.height) / (GameView.numTilesSize * 3f)
-                if (max(xDiff.absoluteValue, yDiff.absoluteValue) > minMoveDistance) {
-                    val direction = Direction.from(xDiff, yDiff)
-                    inputDetectedHandler(TouchInfo(startX, startY, direction))
-                }
-            }
-        }
-
-        return true
-    }
-
-    data class TouchInfo(
-        val xTouch: Float,
-        val yTouch: Float,
-        val direction: Direction
-    )
-
-    enum class Direction {
-        Up,
-        Down,
-        Left,
-        Right;
-
-        companion object {
-            fun from(xDiff: Float, yDiff: Float): Direction {
-                return when (xDiff.absoluteValue > yDiff.absoluteValue) {
-                    true -> if (xDiff > 0) Right else Left
-                    false -> if (yDiff > 0) Down else Up
-                }
-            }
-        }
-    }
 }
