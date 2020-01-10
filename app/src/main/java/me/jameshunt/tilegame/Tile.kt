@@ -55,9 +55,9 @@ class Tile(val type: TileType) {
 
         canvas.drawRoundRect(
             (x * tileSize) + screenContext.gridStartX + leftOffset,
-            ((y - GameView.numTilesSize) * tileSize) + screenContext.gridStartY + topOffset,
+            (y * tileSize) + screenContext.gridStartY + topOffset,
             (x * tileSize) + tileSize + screenContext.gridStartX + rightOffset,
-            ((y - GameView.numTilesSize) * tileSize) + tileSize + screenContext.gridStartY + bottomOffset,
+            (y * tileSize) + tileSize + screenContext.gridStartY + bottomOffset,
             tileRadius,
             tileRadius,
             type.paint
@@ -90,6 +90,8 @@ class Tile(val type: TileType) {
         tick: Int,
         state: GameState
     ): Float {
+        if(y == -1) return 6f
+
         return (state as? GameState.RemovingTiles)?.let {
             val sizeShrinkPerTick = tileSize / 2 / state.tickDuration
 
@@ -108,9 +110,8 @@ class Tile(val type: TileType) {
         state: GameState
     ): Pair<Float, Float> {
         return (state as? GameState.InputDetected)?.let {
-            val isTouchedTile = state.touched.x == x && state.touched.y + GameView.numTilesSize == y
-            val isSwitchWithTile =
-                state.switchWith.x == x && state.switchWith.y + GameView.numTilesSize == y
+            val isTouchedTile = state.touched.x == x && state.touched.y == y
+            val isSwitchWithTile = state.switchWith.x == x && state.switchWith.y == y
 
             val offsetPerTick = tileSize / state.tickDuration
             val moveOffset = offsetPerTick * ((tick - state.startTick) % state.tickDuration)
