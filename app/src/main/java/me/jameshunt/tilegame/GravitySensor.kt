@@ -6,7 +6,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.Log
 
-class GravitySensor : SensorEventListener {
+class GravitySensor(private val setGravityDirection: (TileFromDirection) -> Unit) : SensorEventListener {
 
     override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {
 
@@ -34,6 +34,7 @@ class GravitySensor : SensorEventListener {
 
             TileFromDirection.fromPitch(pitch, roll)?.let {
                 println(it)
+                setGravityDirection(it)
             }
         }
     }

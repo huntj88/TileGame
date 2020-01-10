@@ -5,6 +5,7 @@ import android.hardware.SensorManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.core.content.ContextCompat
+import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -15,7 +16,9 @@ class MainActivity : AppCompatActivity() {
         sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
     }
 
-    private val gravitySensor = GravitySensor()
+    private val gravitySensor = GravitySensor {
+        gameView.directionToFallFrom = it
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

@@ -19,7 +19,7 @@ class GameView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
     companion object {
         const val numTilesSize = 8
-        const val numTileTypes = 4 // max of 6 at the moment, add more in TileType
+        const val numTileTypes = 3 // max of 6 at the moment, add more in TileType
     }
 
     init {
@@ -31,7 +31,7 @@ class GameView @JvmOverloads constructor(
     private var tiles: List<List<Tile?>> = getInitialBoard()
     private var currentState: GameState = CheckForFallableTiles
     private var tick = 0
-    private var directionToFallFrom = GravitySensor.TileFromDirection.Bottom
+    var directionToFallFrom = GravitySensor.TileFromDirection.Top
 
     // will be instantiated after view is measured.
     private val screenContext by lazy {
