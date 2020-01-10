@@ -39,12 +39,14 @@ class Tile(val type: TileType) {
         canvas: Canvas,
         screenContext: ScreenContext,
         tick: Int,
-        state: GameState
+        state: GameState,
+        directionToFallFrom: GravitySensor.TileFromDirection
     ) {
         val tileSize = screenContext.gridSize / GameView.numTilesSize.toFloat()
         val tileRadius = tileSize / 4f
 
-        val fallingYOffset = fallingOffset(x, y, tileSize, tick, state)
+//        val fallingYOffset = fallingOffset(x, y, tileSize, tick, state)
+        val fallingYOffset = 0f
         val sizeOffset = sizeOffset(x, y, tileSize, tick, state)
         val inputMoveOffset = inputMoveOffset(x, y, tileSize, tick, state)
 

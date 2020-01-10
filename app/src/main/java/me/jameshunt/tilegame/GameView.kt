@@ -7,8 +7,10 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
 import me.jameshunt.tilegame.GameState.*
-import me.jameshunt.tilegame.OnInputTouchListener.*
-import kotlin.math.*
+import me.jameshunt.tilegame.OnInputTouchListener.Direction
+import kotlin.math.floor
+import kotlin.math.min
+
 
 class GameView @JvmOverloads constructor(
     context: Context,
@@ -29,6 +31,7 @@ class GameView @JvmOverloads constructor(
     private var tiles: List<List<Tile?>> = getInitialBoard()
     private var currentState: GameState = CheckForFallableTiles
     private var tick = 0
+    private var directionToFallFrom = GravitySensor.TileFromDirection.Bottom
 
     // will be instantiated after view is measured.
     private val screenContext by lazy {
@@ -56,13 +59,13 @@ class GameView @JvmOverloads constructor(
 
         (0 until numTilesSize).forEach { x ->
             if (null in tiles[x]) {
-                invisibleTiles[x].last().render(x, -1, canvas, screenContext, tick, currentState)
+                invisibleTiles[x].last().render(x, -1, canvas, screenContext, tick, currentState, directionToFallFrom)
             }
         }
 
         (0 until numTilesSize).forEach { x ->
             (0 until numTilesSize).forEach { y ->
-                tiles[x][y]?.render(x, y, canvas, screenContext, tick, currentState)
+                tiles[x][y]?.render(x, y, canvas, screenContext, tick, currentState, directionToFallFrom)
             }
         }
 
@@ -106,7 +109,9 @@ class GameView @JvmOverloads constructor(
                 // if any fallable tiles set current state to TilesFalling
                 // if no fallable tiles set current state to CheckForPoints
 
-                val lowestPosYOfFallableTiles = tiles.map { tileColumn ->
+                val gravityFixedTiles = tiles.fixTilesByGravity()
+
+                val lowestPosYOfFallableTiles = gravityFixedTiles.map { tileColumn ->
                     val lowestPosOfNullTile = tileColumn.indexOfLast { it == null }
                     (0 until lowestPosOfNullTile)
                         .map { tileColumn[it] }
@@ -114,7 +119,7 @@ class GameView @JvmOverloads constructor(
                 }
                 val doneFalling = lowestPosYOfFallableTiles.foldIndexed(true) { index, acc, posY ->
                     val indexOfBottomTile = numTilesSize - 1
-                    acc && (posY == indexOfBottomTile || null !in tiles[index])
+                    acc && (posY == indexOfBottomTile || null !in gravityFixedTiles[index])
                 }
 
                 currentState = when (doneFalling) {
@@ -146,7 +151,7 @@ class GameView @JvmOverloads constructor(
                         return tilesThatFell + tilesThatDidNotFall
                     }
 
-                    val joinedGridShift = tiles
+                    val joinedGridShift = tiles.fixTilesByGravity()
                         .mapIndexed { index, list -> invisibleTiles[index] + list }
                         .mapIndexed { index, arrayOfTiles ->
                             val lowestFallableTile =
@@ -160,7 +165,7 @@ class GameView @JvmOverloads constructor(
 
                     tiles = joinedGridShift.map {
                         it.subList(numTilesSize, numTilesSize * 2)
-                    }
+                    }.fixTilesByGravity()
 
                     currentState = CheckForFallableTiles
                 }
@@ -306,6 +311,17 @@ class GameView @JvmOverloads constructor(
         }
 
         return new
+    }
+
+    private fun List<List<Tile?>>.fixTilesByGravity(): List<List<Tile?>> {
+        fun List<List<Tile?>>.reverseGrid(): List<List<Tile?>> = this.map { it.reversed() }.reversed()
+
+        return when(directionToFallFrom) {
+            GravitySensor.TileFromDirection.Top -> this
+            GravitySensor.TileFromDirection.Bottom -> this.map { it.reversed() }
+            GravitySensor.TileFromDirection.Left -> this.transpose2DTileList()
+            GravitySensor.TileFromDirection.Right -> this.transpose2DTileList().reverseGrid()
+        }
     }
 
     private fun getInitialBoard(): List<List<Tile>> {
