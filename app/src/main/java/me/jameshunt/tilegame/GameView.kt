@@ -27,11 +27,16 @@ class GameView @JvmOverloads constructor(
         handleTouchEvents()
     }
 
-    private var invisibleTiles: List<List<Tile>> = getInitialBoard()
+    private var invisibleTiles: List<List<Tile?>> = getInitialBoard()
     private var tiles: List<List<Tile?>> = getInitialBoard()
     private var currentState: GameState = CheckForFallableTiles
     private var tick = 0
     var directionToFallFrom = GravitySensor.TileFromDirection.Top
+        set(value) {
+            if (currentState !is TilesFalling) {
+                field = value
+            }
+        }
 
     // will be instantiated after view is measured.
     private val screenContext by lazy {
@@ -57,15 +62,10 @@ class GameView @JvmOverloads constructor(
 
         updateBoard()
 
-        (0 until numTilesSize).forEach { x ->
-            if (null in tiles[x]) {
-                invisibleTiles[x].last().render(x, -1, canvas, screenContext, tick, currentState, directionToFallFrom)
-            }
-        }
 
         (0 until numTilesSize).forEach { x ->
             (0 until numTilesSize).forEach { y ->
-                tiles[x][y]?.render(x, y, canvas, screenContext, tick, currentState, directionToFallFrom)
+                tiles[x][y]?.render(x, y, canvas, screenContext, tick, currentState)
             }
         }
 
@@ -124,7 +124,7 @@ class GameView @JvmOverloads constructor(
 
                 currentState = when (doneFalling) {
                     true -> CheckForPoints(null)
-                    false -> TilesFalling(tick, lowestPosYOfFallableTiles)
+                    false -> TilesFalling(tick, lowestPosYOfFallableTiles, directionToFallFrom)
                 }
             }
             is TilesFalling -> {
@@ -159,13 +159,11 @@ class GameView @JvmOverloads constructor(
                             arrayOfTiles.shiftTilesInColumnDown(lowestFallableTile)
                         }
 
-                    invisibleTiles = joinedGridShift.map {
-                        it.subList(0, numTilesSize).map { it!! }
-                    }
+                    invisibleTiles = joinedGridShift.map { it.subList(0, numTilesSize) }
 
-                    tiles = joinedGridShift.map {
-                        it.subList(numTilesSize, numTilesSize * 2)
-                    }.fixTilesByGravity()
+                    tiles = joinedGridShift
+                        .map { it.subList(numTilesSize, numTilesSize * 2) }
+                        .fixTilesByGravity()
 
                     currentState = CheckForFallableTiles
                 }
@@ -314,9 +312,10 @@ class GameView @JvmOverloads constructor(
     }
 
     private fun List<List<Tile?>>.fixTilesByGravity(): List<List<Tile?>> {
-        fun List<List<Tile?>>.reverseGrid(): List<List<Tile?>> = this.map { it.reversed() }.reversed()
+        fun List<List<Tile?>>.reverseGrid(): List<List<Tile?>> =
+            this.map { it.reversed() }.reversed()
 
-        return when(directionToFallFrom) {
+        return when (directionToFallFrom) {
             GravitySensor.TileFromDirection.Top -> this
             GravitySensor.TileFromDirection.Bottom -> this.map { it.reversed() }
             GravitySensor.TileFromDirection.Left -> this.transpose2DTileList()
@@ -324,10 +323,14 @@ class GameView @JvmOverloads constructor(
         }
     }
 
-    private fun getInitialBoard(): List<List<Tile>> {
+    private fun getInitialBoard(): List<List<Tile?>> {
         return (0 until numTilesSize).map { x ->
             (0 until numTilesSize).map { y ->
-                Tile(TileType.values().slice(0 until numTileTypes).random())
+//                when(true) {
+                when((y + x) % 3 == 0) {
+                    true -> Tile(TileType.values().slice(0 until numTileTypes).random())
+                    false -> null
+                }
             }
         }
     }
@@ -395,7 +398,8 @@ sealed class GameState {
     object CheckForFallableTiles : GameState()
     data class TilesFalling(
         val startTick: Int,
-        val lowestPosYOfFallableTiles: List<TileYCoord>
+        val lowestPosYOfFallableTiles: List<TileYCoord>,
+        val fallingFromDirection: GravitySensor.TileFromDirection
     ) : GameState()
 
     data class CheckForPoints(val previousInput: InputDetected?) : GameState()
