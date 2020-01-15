@@ -64,6 +64,26 @@ class Tile(val type: TileType) {
         )
     }
 
+    fun renderNewlyVisible(
+        i: Int,
+        canvas: Canvas,
+        screenContext: ScreenContext,
+        tick: Int,
+        state: GameState
+    ) {
+        check(state is GameState.TilesFalling)
+
+        val numTilesSize = GameView.numTilesSize
+        val (x, y) = when (state.fallingFromDirection) {
+            GravitySensor.TileFromDirection.Top -> Pair(i, -1)
+            GravitySensor.TileFromDirection.Bottom -> Pair(i, numTilesSize)
+            GravitySensor.TileFromDirection.Left -> Pair(-1, i)
+            GravitySensor.TileFromDirection.Right -> Pair(numTilesSize, (numTilesSize - 1) - i)
+        } as Pair<TileXCoord, TileYCoord>
+
+        render(x, y, canvas, screenContext, tick, state)
+    }
+
     private fun fallingOffset(
         x: TileXCoord,
         y: TileYCoord,
@@ -89,7 +109,7 @@ class Tile(val type: TileType) {
                     }
                 }
                 state.fallingFromDirection == GravitySensor.TileFromDirection.Bottom -> {
-                    when(state.lowestPosYOfFallableTiles[x] >= (GameView.numTilesSize - 1) - y) {
+                    when (state.lowestPosYOfFallableTiles[x] >= (GameView.numTilesSize - 1) - y) {
                         true -> Offset(0f, -fallingYOffset)
                         false -> Offset(0f, 0f)
                     }

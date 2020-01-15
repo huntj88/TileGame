@@ -62,6 +62,7 @@ class GameView @JvmOverloads constructor(
 
         updateBoard()
 
+        renderNewlyVisibleTiles(canvas)
 
         (0 until numTilesSize).forEach { x ->
             (0 until numTilesSize).forEach { y ->
@@ -326,8 +327,8 @@ class GameView @JvmOverloads constructor(
     private fun getInitialBoard(): List<List<Tile?>> {
         return (0 until numTilesSize).map { x ->
             (0 until numTilesSize).map { y ->
-//                when(true) {
-                when((y + x) % 3 == 0) {
+                //when(true) {
+                when ((y + x) % 3 == 0) {
                     true -> Tile(TileType.values().slice(0 until numTileTypes).random())
                     false -> null
                 }
@@ -368,6 +369,19 @@ class GameView @JvmOverloads constructor(
             height.toFloat(),
             edgeOfBoardColor
         )
+    }
+
+    private fun renderNewlyVisibleTiles(canvas: Canvas) {
+        if (currentState !is TilesFalling) return
+
+        val fixTilesByGravity = tiles.fixTilesByGravity()
+        (0 until numTilesSize).forEach { i ->
+            if (null in fixTilesByGravity[i]) {
+                invisibleTiles[i]
+                    .last()
+                    ?.renderNewlyVisible(i, canvas, screenContext, tick, currentState)
+            }
+        }
     }
 }
 
