@@ -5,6 +5,7 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.Log
+import kotlin.math.abs
 
 class GravitySensor(private val setGravityDirection: (TileFromDirection) -> Unit) : SensorEventListener {
 
@@ -48,12 +49,18 @@ class GravitySensor(private val setGravityDirection: (TileFromDirection) -> Unit
         companion object {
             fun fromPitch(pitch: Float, roll: Float): TileFromDirection? {
                 if (pitch == 0f && roll == 0f) return null
+
                 return when {
+                    abs(pitch) + abs(roll) < 5 -> Top
+                    abs(pitch) > abs(roll) -> when {
+                        pitch < 0f -> Top
+                        pitch > 0f -> Bottom
+                        else -> null
+                    }
                     pitch < -45f -> Top
-                    pitch < 45f && pitch > -45f && roll < 0f -> Right
-                    pitch < 45f && pitch > -45f && roll > 0f -> Left
                     pitch > 45f -> Bottom
-//                    else -> TODO("pitch: $pitch, roll: $roll")
+                    roll < 0f -> Right
+                    roll > 0f -> Left
                     else -> null
                 }
             }

@@ -353,22 +353,6 @@ class GameView @JvmOverloads constructor(
             height.toFloat(),
             edgeOfBoardColor
         )
-
-        canvas.drawRect(
-            0f,
-            0f,
-            screenContext.gridStartX.toFloat(),
-            height.toFloat(),
-            edgeOfBoardColor
-        )
-
-        canvas.drawRect(
-            screenContext.gridStartX.toFloat() + screenContext.gridSize.toFloat(),
-            0f,
-            width.toFloat(),
-            height.toFloat(),
-            edgeOfBoardColor
-        )
     }
 
     private fun renderNewlyVisibleTiles(canvas: Canvas) {
