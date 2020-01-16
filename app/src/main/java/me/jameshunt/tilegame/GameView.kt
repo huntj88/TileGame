@@ -7,8 +7,10 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
 import me.jameshunt.tilegame.GameState.*
-import me.jameshunt.tilegame.OnInputTouchListener.*
-import kotlin.math.*
+import me.jameshunt.tilegame.OnInputTouchListener.Direction
+import kotlin.math.floor
+import kotlin.math.min
+
 
 class GameView @JvmOverloads constructor(
     context: Context,
@@ -17,7 +19,7 @@ class GameView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
     companion object {
         const val numTilesSize = 8
-        const val numTileTypes = 4 // max of 6 at the moment, add more in TileType
+        const val numTileTypes = 3 // max of 6 at the moment, add more in TileType
     }
 
     init {
@@ -25,9 +27,16 @@ class GameView @JvmOverloads constructor(
         handleTouchEvents()
     }
 
+    private var invisibleTiles: List<List<Tile?>> = getInitialBoard()
     private var tiles: List<List<Tile?>> = getInitialBoard()
     private var currentState: GameState = CheckForFallableTiles
     private var tick = 0
+    var directionToFallFrom = GravitySensor.TileFromDirection.Top
+        set(value) {
+            if (currentState !is TilesFalling) {
+                field = value
+            }
+        }
 
     // will be instantiated after view is measured.
     private val screenContext by lazy {
@@ -53,8 +62,10 @@ class GameView @JvmOverloads constructor(
 
         updateBoard()
 
+        renderNewlyVisibleTiles(canvas)
+
         (0 until numTilesSize).forEach { x ->
-            (numTilesSize - 1 until numTilesSize * 2).forEach { y ->
+            (0 until numTilesSize).forEach { y ->
                 tiles[x][y]?.render(x, y, canvas, screenContext, tick, currentState)
             }
         }
@@ -73,9 +84,9 @@ class GameView @JvmOverloads constructor(
             }
             is InputDetected -> {
                 state.onAnimationCompleted(state.startTick) {
-                    val touchedTile = tiles[state.touched.x][state.touched.y + numTilesSize]
+                    val touchedTile = tiles[state.touched.x][state.touched.y]
                     val switchWithTile =
-                        tiles[state.switchWith.x][state.switchWith.y + numTilesSize]
+                        tiles[state.switchWith.x][state.switchWith.y]
 
                     tiles = tiles.map { column ->
                         column.map { tile ->
@@ -87,7 +98,7 @@ class GameView @JvmOverloads constructor(
                         }
                     }
 
-                    currentState = when(state.switchBackIfNoPoints) {
+                    currentState = when (state.switchBackIfNoPoints) {
                         true -> CheckForPoints(state)
                         false -> WaitForInput
                     }
@@ -99,20 +110,22 @@ class GameView @JvmOverloads constructor(
                 // if any fallable tiles set current state to TilesFalling
                 // if no fallable tiles set current state to CheckForPoints
 
-                val lowestPosYOfFallableTiles = tiles.map { tileColumn ->
+                val gravityFixedTiles = tiles.fixTilesByGravity()
+
+                val lowestPosYOfFallableTiles = gravityFixedTiles.map { tileColumn ->
                     val lowestPosOfNullTile = tileColumn.indexOfLast { it == null }
                     (0 until lowestPosOfNullTile)
                         .map { tileColumn[it] }
                         .indexOfLast { it != null } as TileYCoord
                 }
                 val doneFalling = lowestPosYOfFallableTiles.foldIndexed(true) { index, acc, posY ->
-                    val indexOfBottomTile = (numTilesSize * 2) - 1
-                    acc && (posY == indexOfBottomTile || null !in tiles[index])
+                    val indexOfBottomTile = numTilesSize - 1
+                    acc && (posY == indexOfBottomTile || null !in gravityFixedTiles[index])
                 }
 
                 currentState = when (doneFalling) {
                     true -> CheckForPoints(null)
-                    false -> TilesFalling(tick, lowestPosYOfFallableTiles)
+                    false -> TilesFalling(tick, lowestPosYOfFallableTiles, directionToFallFrom)
                 }
             }
             is TilesFalling -> {
@@ -121,6 +134,7 @@ class GameView @JvmOverloads constructor(
                     // shift ones that fell to tile spot below
                     // set current state to CheckForFallableTiles
 
+                    // for joined (numTilesSize x (numTilesSize * 2)) grid
                     fun List<Tile?>.shiftTilesInColumnDown(lowestFallableTile: TileYCoord): List<Tile?> {
                         if (null !in this) return this
 
@@ -138,9 +152,19 @@ class GameView @JvmOverloads constructor(
                         return tilesThatFell + tilesThatDidNotFall
                     }
 
-                    tiles = tiles.mapIndexed { index, arrayOfTiles ->
-                        arrayOfTiles.shiftTilesInColumnDown(state.lowestPosYOfFallableTiles[index])
-                    }
+                    val joinedGridShift = tiles.fixTilesByGravity()
+                        .mapIndexed { index, list -> invisibleTiles[index] + list }
+                        .mapIndexed { index, arrayOfTiles ->
+                            val lowestFallableTile =
+                                state.lowestPosYOfFallableTiles[index] + numTilesSize
+                            arrayOfTiles.shiftTilesInColumnDown(lowestFallableTile)
+                        }
+
+                    invisibleTiles = joinedGridShift.map { it.subList(0, numTilesSize) }
+
+                    tiles = joinedGridShift
+                        .map { it.subList(numTilesSize, numTilesSize * 2) }
+                        .fixTilesByGravity()
 
                     currentState = CheckForFallableTiles
                 }
@@ -183,26 +207,19 @@ class GameView @JvmOverloads constructor(
                     return tilesWithRemoved
                 }
 
-                val tilesTransposed = tiles.transpose2DTileList()
-
-                val transposedRowsWithRemovedMatches = tilesTransposed
-                    .subList(numTilesSize, numTilesSize * 2)
-                    .map { it ->
-                        it
+                val horizontalMatches = tiles
+                    .transpose2DTileList()
+                    .map { row ->
+                        row
                             .map { it!! } // no elements in list will be null
                             .checkMatchesInColumnOrTransposedRow()
                     }
-
-                val horizontalMatches =
-                    (tilesTransposed.subList(0, numTilesSize) + transposedRowsWithRemovedMatches)
-                        .transpose2DTileList()
+                    .transpose2DTileList()
 
                 val verticalMatches = tiles.map { column ->
-                    val visibleTiles = column.subList(numTilesSize, numTilesSize * 2)
+                    column
                         .map { it!! } // no elements in list will be null
                         .checkMatchesInColumnOrTransposedRow()
-
-                    column.subList(0, numTilesSize) + visibleTiles
                 }
                 assert(horizontalMatches.size == verticalMatches.size)
                 assert(horizontalMatches[0].size == verticalMatches[0].size)
@@ -223,7 +240,7 @@ class GameView @JvmOverloads constructor(
                 }
 
                 currentState = when (isBoardSame) {
-                    true -> when(state.previousInput == null) {
+                    true -> when (state.previousInput == null) {
                         true -> WaitForInput
                         false -> InputDetected(
                             touched = state.previousInput.switchWith,
@@ -295,10 +312,23 @@ class GameView @JvmOverloads constructor(
         return new
     }
 
+    private fun List<List<Tile?>>.fixTilesByGravity(): List<List<Tile?>> {
+        fun List<List<Tile?>>.reverseGrid(): List<List<Tile?>> =
+            this.map { it.reversed() }.reversed()
+
+        return when (directionToFallFrom) {
+            GravitySensor.TileFromDirection.Top -> this
+            GravitySensor.TileFromDirection.Bottom -> this.map { it.reversed() }
+            GravitySensor.TileFromDirection.Left -> this.transpose2DTileList()
+            GravitySensor.TileFromDirection.Right -> this.transpose2DTileList().reverseGrid()
+        }
+    }
+
     private fun getInitialBoard(): List<List<Tile?>> {
         return (0 until numTilesSize).map { x ->
-            (0 until numTilesSize * 2).map { y ->
-                when (y < numTilesSize && (y + x) % 3 == 0) {
+            (0 until numTilesSize).map { y ->
+                //when(true) {
+                when ((y + x) % 3 == 0) {
                     true -> Tile(TileType.values().slice(0 until numTileTypes).random())
                     false -> null
                 }
@@ -323,22 +353,19 @@ class GameView @JvmOverloads constructor(
             height.toFloat(),
             edgeOfBoardColor
         )
+    }
 
-        canvas.drawRect(
-            0f,
-            0f,
-            screenContext.gridStartX.toFloat(),
-            height.toFloat(),
-            edgeOfBoardColor
-        )
+    private fun renderNewlyVisibleTiles(canvas: Canvas) {
+        if (currentState !is TilesFalling) return
 
-        canvas.drawRect(
-            screenContext.gridStartX.toFloat() + screenContext.gridSize.toFloat(),
-            0f,
-            width.toFloat(),
-            height.toFloat(),
-            edgeOfBoardColor
-        )
+        val fixTilesByGravity = tiles.fixTilesByGravity()
+        (0 until numTilesSize).forEach { i ->
+            if (null in fixTilesByGravity[i]) {
+                invisibleTiles[i]
+                    .last()
+                    ?.renderNewlyVisible(i, canvas, screenContext, tick, currentState)
+            }
+        }
     }
 }
 
@@ -369,7 +396,8 @@ sealed class GameState {
     object CheckForFallableTiles : GameState()
     data class TilesFalling(
         val startTick: Int,
-        val lowestPosYOfFallableTiles: List<TileYCoord>
+        val lowestPosYOfFallableTiles: List<TileYCoord>,
+        val fallingFromDirection: GravitySensor.TileFromDirection
     ) : GameState()
 
     data class CheckForPoints(val previousInput: InputDetected?) : GameState()
@@ -379,7 +407,7 @@ sealed class GameState {
     ) : GameState()
 
     val tickDuration: Int
-        get() = when(this) {
+        get() = when (this) {
             is InputDetected -> 8
             is TilesFalling -> 8
             is RemovingTiles -> 24

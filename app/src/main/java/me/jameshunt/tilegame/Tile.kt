@@ -44,24 +44,44 @@ class Tile(val type: TileType) {
         val tileSize = screenContext.gridSize / GameView.numTilesSize.toFloat()
         val tileRadius = tileSize / 4f
 
-        val fallingYOffset = fallingOffset(x, y, tileSize, tick, state)
+        val fallingOffset = fallingOffset(x, y, tileSize, tick, state)
         val sizeOffset = sizeOffset(x, y, tileSize, tick, state)
         val inputMoveOffset = inputMoveOffset(x, y, tileSize, tick, state)
 
-        val leftOffset = sizeOffset + inputMoveOffset.first
-        val topOffset = fallingYOffset + sizeOffset + inputMoveOffset.second
-        val rightOffset = inputMoveOffset.first - sizeOffset
-        val bottomOffset = fallingYOffset - sizeOffset + inputMoveOffset.second
+        val leftOffset = fallingOffset.x + sizeOffset + inputMoveOffset.x
+        val topOffset = fallingOffset.y + sizeOffset + inputMoveOffset.y
+        val rightOffset = fallingOffset.x + inputMoveOffset.x - sizeOffset
+        val bottomOffset = fallingOffset.y - sizeOffset + inputMoveOffset.y
 
         canvas.drawRoundRect(
             (x * tileSize) + screenContext.gridStartX + leftOffset,
-            ((y - GameView.numTilesSize) * tileSize) + screenContext.gridStartY + topOffset,
+            (y * tileSize) + screenContext.gridStartY + topOffset,
             (x * tileSize) + tileSize + screenContext.gridStartX + rightOffset,
-            ((y - GameView.numTilesSize) * tileSize) + tileSize + screenContext.gridStartY + bottomOffset,
+            (y * tileSize) + tileSize + screenContext.gridStartY + bottomOffset,
             tileRadius,
             tileRadius,
             type.paint
         )
+    }
+
+    fun renderNewlyVisible(
+        i: Int,
+        canvas: Canvas,
+        screenContext: ScreenContext,
+        tick: Int,
+        state: GameState
+    ) {
+        check(state is GameState.TilesFalling)
+
+        val numTilesSize = GameView.numTilesSize
+        val (x, y) = when (state.fallingFromDirection) {
+            GravitySensor.TileFromDirection.Top -> Pair(i, -1)
+            GravitySensor.TileFromDirection.Bottom -> Pair(i, numTilesSize)
+            GravitySensor.TileFromDirection.Left -> Pair(-1, i)
+            GravitySensor.TileFromDirection.Right -> Pair(numTilesSize, (numTilesSize - 1) - i)
+        } as Pair<TileXCoord, TileYCoord>
+
+        render(x, y, canvas, screenContext, tick, state)
     }
 
     private fun fallingOffset(
@@ -70,17 +90,33 @@ class Tile(val type: TileType) {
         tileSize: Float,
         tick: Int,
         state: GameState
-    ): Float {
+    ): Offset {
         return (state as? GameState.TilesFalling)?.let {
             val fallingYOffsetPerTick = tileSize / state.tickDuration
             val fallingYOffset =
                 fallingYOffsetPerTick * ((tick - state.startTick) % state.tickDuration)
 
-            when (state.lowestPosYOfFallableTiles[x] < y) {
-                true -> 0f
-                false -> fallingYOffset
+            when {
+                state.fallingFromDirection == GravitySensor.TileFromDirection.Top &&
+                        state.lowestPosYOfFallableTiles[x] >= y -> Offset(0f, fallingYOffset)
+                state.fallingFromDirection == GravitySensor.TileFromDirection.Left
+                        && state.lowestPosYOfFallableTiles[y] >= x -> Offset(fallingYOffset, 0f)
+                state.fallingFromDirection == GravitySensor.TileFromDirection.Right -> {
+                    val fixedLowest = state.lowestPosYOfFallableTiles.reversed()[y]
+                    when (fixedLowest >= (GameView.numTilesSize - 1) - x) {
+                        true -> Offset(-fallingYOffset, 0f)
+                        false -> Offset(0f, 0f)
+                    }
+                }
+                state.fallingFromDirection == GravitySensor.TileFromDirection.Bottom -> {
+                    when (state.lowestPosYOfFallableTiles[x] >= (GameView.numTilesSize - 1) - y) {
+                        true -> Offset(0f, -fallingYOffset)
+                        false -> Offset(0f, 0f)
+                    }
+                }
+                else -> Offset(0f, 0f)
             }
-        } ?: 0f
+        } ?: Offset(0f, 0f)
     }
 
     private fun sizeOffset(
@@ -90,6 +126,8 @@ class Tile(val type: TileType) {
         tick: Int,
         state: GameState
     ): Float {
+        if (y == -1) return 6f
+
         return (state as? GameState.RemovingTiles)?.let {
             val sizeShrinkPerTick = tileSize / 2 / state.tickDuration
 
@@ -106,30 +144,34 @@ class Tile(val type: TileType) {
         tileSize: Float,
         tick: Int,
         state: GameState
-    ): Pair<Float, Float> {
+    ): Offset {
         return (state as? GameState.InputDetected)?.let {
-            val isTouchedTile = state.touched.x == x && state.touched.y + GameView.numTilesSize == y
-            val isSwitchWithTile =
-                state.switchWith.x == x && state.switchWith.y + GameView.numTilesSize == y
+            val isTouchedTile = state.touched.x == x && state.touched.y == y
+            val isSwitchWithTile = state.switchWith.x == x && state.switchWith.y == y
 
             val offsetPerTick = tileSize / state.tickDuration
             val moveOffset = offsetPerTick * ((tick - state.startTick) % state.tickDuration)
 
             when {
                 isTouchedTile -> when (state.direction) {
-                    OnInputTouchListener.Direction.Up -> Pair(0f, -moveOffset)
-                    OnInputTouchListener.Direction.Down -> Pair(0f, moveOffset)
-                    OnInputTouchListener.Direction.Left -> Pair(-moveOffset, 0f)
-                    OnInputTouchListener.Direction.Right -> Pair(moveOffset, 0f)
+                    OnInputTouchListener.Direction.Up -> Offset(0f, -moveOffset)
+                    OnInputTouchListener.Direction.Down -> Offset(0f, moveOffset)
+                    OnInputTouchListener.Direction.Left -> Offset(-moveOffset, 0f)
+                    OnInputTouchListener.Direction.Right -> Offset(moveOffset, 0f)
                 }
                 isSwitchWithTile -> when (state.direction) {
-                    OnInputTouchListener.Direction.Up -> Pair(0f, moveOffset)
-                    OnInputTouchListener.Direction.Down -> Pair(0f, -moveOffset)
-                    OnInputTouchListener.Direction.Left -> Pair(moveOffset, 0f)
-                    OnInputTouchListener.Direction.Right -> Pair(-moveOffset, 0f)
+                    OnInputTouchListener.Direction.Up -> Offset(0f, moveOffset)
+                    OnInputTouchListener.Direction.Down -> Offset(0f, -moveOffset)
+                    OnInputTouchListener.Direction.Left -> Offset(moveOffset, 0f)
+                    OnInputTouchListener.Direction.Right -> Offset(-moveOffset, 0f)
                 }
-                else -> Pair(0f, 0f)
+                else -> Offset(0f, 0f)
             }
-        } ?: Pair(0f, 0f)
+        } ?: Offset(0f, 0f)
     }
+
+    data class Offset(
+        val x: Float,
+        val y: Float
+    )
 }
