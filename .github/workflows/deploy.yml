@@ -19,8 +19,6 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: '0'
       
       - name: Set up JDK 1.8
         uses: actions/setup-java@v1
@@ -37,8 +35,9 @@ jobs:
         uses: anothrNick/github-tag-action@1.26.0
         env:
           GITHUB_TOKEN: ${{ secrets.github_actions }}
+          RELEASE_BRANCHES: master,test-action
 
-      - name: Build
+      - name: Clean
         run: ./gradlew clean
 
       - name: Generate Release Bundle
