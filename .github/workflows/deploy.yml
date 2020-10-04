@@ -25,5 +25,11 @@ jobs:
         with:
           java-version: 1.8
       
-      - name: Assemble Debug APK
-        run: ./gradlew assembleDebug
+      - name: build
+        run: ./gradlew build
+
+      - name: test
+        run: ./gradlew test
+
+      - name: release apk
+        run: ./gradlew assembleRelease

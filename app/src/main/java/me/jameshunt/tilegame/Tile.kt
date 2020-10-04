@@ -74,12 +74,12 @@ class Tile(val type: TileType) {
         check(state is GameState.TilesFalling)
 
         val numTilesSize = GameView.numTilesSize
-        val (x, y) = when (state.fallingFromDirection) {
+        val (x: TileXCoord, y: TileYCoord) = when (state.fallingFromDirection) {
             GravitySensor.TileFromDirection.Top -> Pair(i, -1)
             GravitySensor.TileFromDirection.Bottom -> Pair(i, numTilesSize)
             GravitySensor.TileFromDirection.Left -> Pair(-1, i)
             GravitySensor.TileFromDirection.Right -> Pair(numTilesSize, (numTilesSize - 1) - i)
-        } as Pair<TileXCoord, TileYCoord>
+        }
 
         render(x, y, canvas, screenContext, tick, state)
     }
