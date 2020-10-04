@@ -80,26 +80,24 @@ class State {
             is GameState.WaitForInput -> {
                 // noOp
             }
-            is GameState.InputDetected -> {
-                state.onAnimationCompleted(state.startTick) {
-                    val touchedTile = tiles[state.touched.x][state.touched.y]
-                    val switchWithTile =
-                        tiles[state.switchWith.x][state.switchWith.y]
+            is GameState.InputDetected -> state.onAnimationCompleted(state.startTick) {
+                val touchedTile = tiles[state.touched.x][state.touched.y]
+                val switchWithTile =
+                    tiles[state.switchWith.x][state.switchWith.y]
 
-                    tiles = tiles.map { column ->
-                        column.map { tile ->
-                            when (tile) {
-                                touchedTile -> switchWithTile
-                                switchWithTile -> touchedTile
-                                else -> tile
-                            }
+                tiles = tiles.map { column ->
+                    column.map { tile ->
+                        when (tile) {
+                            touchedTile -> switchWithTile
+                            switchWithTile -> touchedTile
+                            else -> tile
                         }
                     }
+                }
 
-                    currentState = when (state.switchBackIfNoPoints) {
-                        true -> GameState.CheckForPoints(state)
-                        false -> GameState.WaitForInput
-                    }
+                currentState = when (state.switchBackIfNoPoints) {
+                    true -> GameState.CheckForPoints(state)
+                    false -> GameState.WaitForInput
                 }
             }
             is GameState.CheckForFallableTiles -> {
@@ -130,46 +128,44 @@ class State {
                     )
                 }
             }
-            is GameState.TilesFalling -> {
-                state.onAnimationCompleted(state.startTick) {
+            is GameState.TilesFalling -> state.onAnimationCompleted(state.startTick) {
 
-                    // shift ones that fell to tile spot below
-                    // set current state to CheckForFallableTiles
+                // shift ones that fell to tile spot below
+                // set current state to CheckForFallableTiles
 
-                    // for joined (numTilesSize x (numTilesSize * 2)) grid
-                    fun List<Tile?>.shiftTilesInColumnDown(lowestFallableTile: TileYCoord): List<Tile?> {
-                        if (null !in this) return this
+                // for joined (numTilesSize x (numTilesSize * 2)) grid
+                fun List<Tile?>.shiftTilesInColumnDown(lowestFallableTile: TileYCoord): List<Tile?> {
+                    if (null !in this) return this
 
-                        val newTopTile = listOf(
-                            Tile(TileType.values().slice(0 until GameView.numTileTypes).random())
-                        ) as List<Tile?>
+                    val newTopTile = listOf(
+                        Tile(TileType.values().slice(0 until GameView.numTileTypes).random())
+                    ) as List<Tile?>
 
-                        val tilesThatFell = newTopTile + this.subList(0, lowestFallableTile + 1)
+                    val tilesThatFell = newTopTile + this.subList(0, lowestFallableTile + 1)
 
-                        val indexOfBottomTile = (GameView.numTilesSize * 2) - 1
+                    val indexOfBottomTile = (GameView.numTilesSize * 2) - 1
 
-                        val tilesThatDidNotFall = (lowestFallableTile + 2..indexOfBottomTile)
-                            .map { this[it] }
+                    val tilesThatDidNotFall = (lowestFallableTile + 2..indexOfBottomTile)
+                        .map { this[it] }
 
-                        return tilesThatFell + tilesThatDidNotFall
+                    return tilesThatFell + tilesThatDidNotFall
+                }
+
+                val joinedGridShift = tiles.fixTilesByGravity(directionToFallFrom)
+                    .mapIndexed { index, list -> invisibleTiles[index] + list }
+                    .mapIndexed { index, arrayOfTiles ->
+                        val lowestFallableTile =
+                            state.lowestPosYOfFallableTiles[index] + GameView.numTilesSize
+                        arrayOfTiles.shiftTilesInColumnDown(lowestFallableTile)
                     }
 
-                    val joinedGridShift = tiles.fixTilesByGravity(directionToFallFrom)
-                        .mapIndexed { index, list -> invisibleTiles[index] + list }
-                        .mapIndexed { index, arrayOfTiles ->
-                            val lowestFallableTile =
-                                state.lowestPosYOfFallableTiles[index] + GameView.numTilesSize
-                            arrayOfTiles.shiftTilesInColumnDown(lowestFallableTile)
-                        }
+                invisibleTiles = joinedGridShift.map { it.subList(0, GameView.numTilesSize) }
 
-                    invisibleTiles = joinedGridShift.map { it.subList(0, GameView.numTilesSize) }
+                tiles = joinedGridShift
+                    .map { it.subList(GameView.numTilesSize, GameView.numTilesSize * 2) }
+                    .fixTilesByGravity(directionToFallFrom)
 
-                    tiles = joinedGridShift
-                        .map { it.subList(GameView.numTilesSize, GameView.numTilesSize * 2) }
-                        .fixTilesByGravity(directionToFallFrom)
-
-                    currentState = GameState.CheckForFallableTiles
-                }
+                currentState = GameState.CheckForFallableTiles
             }
             is GameState.CheckForPoints -> {
                 fun List<Tile>.checkMatchesInColumnOrTransposedRow(): List<Tile?> {
@@ -237,8 +233,8 @@ class State {
                 }
 
                 val isBoardSame = mergedMatches.fold(true) { acc, column ->
-                    val isColumnSame = null !in column
-                    acc && isColumnSame
+                    fun isColumnSame(): Boolean = null !in column
+                    acc && isColumnSame()
                 }
 
                 currentState = when (isBoardSame) {
@@ -255,11 +251,9 @@ class State {
                     false -> GameState.RemovingTiles(tick, mergedMatches)
                 }
             }
-            is GameState.RemovingTiles -> {
-                state.onAnimationCompleted(state.startTick) {
-                    tiles = state.newBoardAfterRemove
-                    currentState = GameState.CheckForFallableTiles
-                }
+            is GameState.RemovingTiles -> state.onAnimationCompleted(state.startTick) {
+                tiles = state.newBoardAfterRemove
+                currentState = GameState.CheckForFallableTiles
             }
         }
     }
