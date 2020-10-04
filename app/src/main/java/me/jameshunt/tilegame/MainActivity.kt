@@ -17,7 +17,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val gravitySensor = GravitySensor {
-        gameView.directionToFallFrom = it
+        gameView.setDirectionToFallFrom(it)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
