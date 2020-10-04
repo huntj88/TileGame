@@ -39,9 +39,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           RELEASE_BRANCHES: master,test-action
 
-      - name: Clean
-        run: ./gradlew clean
-
       - name: Generate Release Bundle
         run: ./gradlew bundleRelease
 
