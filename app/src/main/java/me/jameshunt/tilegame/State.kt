@@ -223,8 +223,8 @@ class State {
                         .map { it!! } // no elements in list will be null
                         .checkMatchesInColumnOrTransposedRow()
                 }
-                assert(horizontalMatches.size == verticalMatches.size)
-                assert(horizontalMatches[0].size == verticalMatches[0].size)
+                check(horizontalMatches.size == verticalMatches.size)
+                check(horizontalMatches[0].size == verticalMatches[0].size)
 
 
                 val mergedMatches = verticalMatches.mapIndexed { x, columns ->

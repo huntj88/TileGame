@@ -31,7 +31,7 @@ class GameView @JvmOverloads constructor(
 
     // will be instantiated after view is measured.
     private val screenContext by lazy {
-        assert(height != 0 && width != 0)
+        check(height != 0 && width != 0)
 
         val gridSize = min(width, height)
 
