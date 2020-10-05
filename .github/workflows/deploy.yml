@@ -56,4 +56,4 @@ jobs:
         with:
           serviceAccountJson: ${{ secrets.SERVICE_ACCOUNT_JSON }}
           packageName: me.jameshunt.tilegame
-          releaseFile: app/build/outputs/bundle/release/app-release.aab
+          releaseFile: ${{ SIGNED_RELEASE_FILE }}
