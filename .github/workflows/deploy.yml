@@ -27,9 +27,6 @@ jobs:
         with:
           java-version: 1.8
 
-      - name: ls
-        run: ls -la app/build/outputs/bundle/release/
-
       - name: Build
         run: ./gradlew build
 
