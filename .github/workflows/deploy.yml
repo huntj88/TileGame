@@ -66,4 +66,4 @@ jobs:
           serviceAccountJson: service_account.json
           packageName: me.jameshunt.tilegame
           releaseFile: ${{ env.SIGNED_RELEASE_FILE }}
-          track: production
+          track: internal
