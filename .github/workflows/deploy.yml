@@ -28,6 +28,10 @@ jobs:
           RELEASE_BRANCHES: master
           DEFAULT_BUMP: none
 
+      - name: Check version was bumped or exit
+        if: ${{ env.part != null }}
+        run: echo "checked any part of version bumped"
+
       - name: Generate Release Bundle
         run: ./gradlew bundleRelease
 
