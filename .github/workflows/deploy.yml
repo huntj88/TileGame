@@ -6,7 +6,7 @@ name: CI
 # events but only for the master branch
 on:
   push:
-    branches: [ master, test-action ]
+    branches: [ master ]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -37,13 +37,10 @@ jobs:
         uses: anothrNick/github-tag-action@1.26.0
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          RELEASE_BRANCHES: master,test-action
+          RELEASE_BRANCHES: master
 
       - name: Generate Release Bundle
         run: ./gradlew bundleRelease
-
-      - name: ls
-        run: ls -la app/build/outputs/bundle/release/
 
       - name: Sign Release Bundle
         uses: r0adkll/sign-android-release@v1
@@ -53,9 +50,6 @@ jobs:
           alias: ${{ secrets.ALIAS }}
           keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
-
-      - name: ls
-        run: ls -la app/build/outputs/bundle/release/
 
       - name: Create service_account.json FROM secrets.SERVICE_ACCOUNT_JSON
         run: echo '${{ secrets.SERVICE_ACCOUNT_JSON }}' > service_account.json
