@@ -108,11 +108,11 @@ class State {
 
                 val gravityFixedTiles = tiles.fixTilesByGravity(directionToFallFrom)
 
-                val lowestPosYOfFallableTiles = gravityFixedTiles.map { tileColumn ->
+                val lowestPosYOfFallableTiles: List<TileYCoord> = gravityFixedTiles.map { tileColumn ->
                     val lowestPosOfNullTile = tileColumn.indexOfLast { it == null }
                     (0 until lowestPosOfNullTile)
                         .map { tileColumn[it] }
-                        .indexOfLast { it != null } as TileYCoord
+                        .indexOfLast { it != null }
                 }
                 val doneFalling = lowestPosYOfFallableTiles.foldIndexed(true) { index, acc, posY ->
                     val indexOfBottomTile = GameView.numTilesSize - 1
