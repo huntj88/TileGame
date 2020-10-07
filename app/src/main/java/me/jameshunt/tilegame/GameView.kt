@@ -51,13 +51,20 @@ class GameView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        state.updateBoard()
+        state.updateBoard { tick ->
+            renderNewlyVisibleTiles(canvas, tick)
 
-        renderNewlyVisibleTiles(canvas)
-
-        (0 until numTilesSize).forEach { x ->
-            (0 until numTilesSize).forEach { y ->
-                state.tiles[x][y]?.render(x, y, canvas, screenContext, state.tick, state.currentState)
+            (0 until numTilesSize).forEach { x ->
+                (0 until numTilesSize).forEach { y ->
+                    state.tiles[x][y]?.render(
+                        x = x,
+                        y = y,
+                        canvas = canvas,
+                        screenContext = screenContext,
+                        tick = tick,
+                        state = state.currentState
+                    )
+                }
             }
         }
 
@@ -79,19 +86,19 @@ class GameView @JvmOverloads constructor(
                 val yTouchInGrid = touchInfo.yTouch - screenContext.gridStartY
                 val yTile = floor(yTouchInGrid / screenContext.gridSize * numTilesSize).toInt()
 
-                val touched = InputDetected.TileCoordinate(xTile, yTile)
+                val touched = Input.TileCoordinate(xTile, yTile)
                 val switchWith = when (touchInfo.direction) {
-                    Direction.Up -> InputDetected.TileCoordinate(xTile, yTile - 1)
-                    Direction.Down -> InputDetected.TileCoordinate(xTile, yTile + 1)
-                    Direction.Left -> InputDetected.TileCoordinate(xTile - 1, yTile)
-                    Direction.Right -> InputDetected.TileCoordinate(xTile + 1, yTile)
+                    Direction.Up -> Input.TileCoordinate(xTile, yTile - 1)
+                    Direction.Down -> Input.TileCoordinate(xTile, yTile + 1)
+                    Direction.Left -> Input.TileCoordinate(xTile - 1, yTile)
+                    Direction.Right -> Input.TileCoordinate(xTile + 1, yTile)
                 }
 
                 val validXMove = switchWith.x in (0 until numTilesSize)
                 val validYMove = switchWith.y in (0 until numTilesSize)
 
                 if (validXMove && validYMove) {
-                    state.currentState = InputDetected(touched, switchWith, touchInfo.direction, state.tick)
+                    state.lastInput = Input(touched, switchWith, touchInfo.direction)
                 }
             }
         })
@@ -116,7 +123,7 @@ class GameView @JvmOverloads constructor(
         )
     }
 
-    private fun renderNewlyVisibleTiles(canvas: Canvas) {
+    private fun renderNewlyVisibleTiles(canvas: Canvas, tick: Int) {
         if (state.currentState !is TilesFalling) return
 
         val fixTilesByGravity = state.tiles.fixTilesByGravity(state.directionToFallFrom)
@@ -124,7 +131,7 @@ class GameView @JvmOverloads constructor(
             if (null in fixTilesByGravity[i]) {
                 state.invisibleTiles[i]
                     .last()
-                    ?.renderNewlyVisible(i, canvas, screenContext, state.tick, state.currentState)
+                    ?.renderNewlyVisible(i, canvas, screenContext, tick, state.currentState)
             }
         }
     }

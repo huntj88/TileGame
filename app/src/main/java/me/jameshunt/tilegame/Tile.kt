@@ -146,20 +146,21 @@ data class Tile(val type: TileType) {
         state: GameState
     ): Offset {
         return (state as? GameState.InputDetected)?.let {
-            val isTouchedTile = state.touched.x == x && state.touched.y == y
-            val isSwitchWithTile = state.switchWith.x == x && state.switchWith.y == y
+            val input = state.input
+            val isTouchedTile = input.touched.x == x && input.touched.y == y
+            val isSwitchWithTile = input.switchWith.x == x && input.switchWith.y == y
 
             val offsetPerTick = tileSize / state.tickDuration
             val moveOffset = offsetPerTick * ((tick - state.startTick) % state.tickDuration)
 
             when {
-                isTouchedTile -> when (state.direction) {
+                isTouchedTile -> when (input.direction) {
                     OnInputTouchListener.Direction.Up -> Offset(0f, -moveOffset)
                     OnInputTouchListener.Direction.Down -> Offset(0f, moveOffset)
                     OnInputTouchListener.Direction.Left -> Offset(-moveOffset, 0f)
                     OnInputTouchListener.Direction.Right -> Offset(moveOffset, 0f)
                 }
-                isSwitchWithTile -> when (state.direction) {
+                isSwitchWithTile -> when (input.direction) {
                     OnInputTouchListener.Direction.Up -> Offset(0f, moveOffset)
                     OnInputTouchListener.Direction.Down -> Offset(0f, -moveOffset)
                     OnInputTouchListener.Direction.Left -> Offset(moveOffset, 0f)

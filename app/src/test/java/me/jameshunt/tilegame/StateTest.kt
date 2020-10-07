@@ -13,10 +13,10 @@ class StateTest {
                 listOf(Tile(TileType.One), Tile(TileType.One))
             )
             assertEquals(GameState.CheckForFallableTiles, currentState)
-            updateBoard()
+            updateBoard {}
 
             assertTrue(currentState is GameState.CheckForPoints)
-            updateBoard()
+            updateBoard {}
             assertTrue(currentState is GameState.WaitForInput)
         }
     }
@@ -35,9 +35,9 @@ class StateTest {
             assertShouldFallThenMoveBackToCheck()
             assertShouldFallThenMoveBackToCheck()
 
-            updateBoard()
+            updateBoard {}
             assertTrue(currentState is GameState.CheckForPoints)
-            updateBoard()
+            updateBoard {}
             assertTrue(currentState is GameState.WaitForInput)
         }
     }
@@ -50,10 +50,10 @@ class StateTest {
                 listOf(Tile(TileType.One), Tile(TileType.Two), Tile(TileType.Three)),
                 listOf(Tile(TileType.One), Tile(TileType.Three), Tile(TileType.Two))
             )
-            updateBoard()
+            updateBoard {}
             assertTrue(currentState is GameState.CheckForPoints)
 
-            updateBoard()
+            updateBoard {}
             assertTrue(currentState is GameState.RemovingTiles)
 
             // all ones are removed. two ways of 3 in a row
@@ -75,10 +75,10 @@ class StateTest {
         assertEquals(GameState.CheckForFallableTiles, currentState)
 
         (0 until fallingTickDuration).forEach {
-            updateBoard()
+            updateBoard {}
             assertTrue(currentState is GameState.TilesFalling)
         }
-        updateBoard()
+        updateBoard {}
         assertEquals(GameState.CheckForFallableTiles, currentState)
         println("fell one tile")
     }
