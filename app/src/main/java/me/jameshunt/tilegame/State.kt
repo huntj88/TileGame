@@ -192,7 +192,7 @@ data class State(
 
     private fun handleCheckForPoints(stepState: Step.CheckForPoints): State {
         fun List<Tile>.checkMatchesInColumnOrTransposedRow(): List<Tile?> {
-            val tilesWithRemoved = this.map { it as Tile? }.toMutableList()
+            val tilesWithRemoved = this.toMutableList<Tile?>()
 
             var indexOfStartMatching = 0
             var matchSoFarSize = 0
