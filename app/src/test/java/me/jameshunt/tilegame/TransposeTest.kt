@@ -10,7 +10,8 @@ class TransposeTest {
         val oneByOne = listOf(listOf<Tile?>(Tile(TileType.One)))
         oneByOne
             .transpose2DTileList()
-            .let { assertTrue(it == oneByOne) }
+            .simplifyToTileType()
+            .let { assertTrue(it == oneByOne.simplifyToTileType()) }
     }
 
     @Test
@@ -21,7 +22,8 @@ class TransposeTest {
         )
         twoByTwo
             .transpose2DTileList()
-            .let { assertTrue(it == twoByTwo) }
+            .simplifyToTileType()
+            .let { assertTrue(it == twoByTwo.simplifyToTileType()) }
     }
 
     @Test
@@ -34,9 +36,10 @@ class TransposeTest {
         val expected = listOf(
             listOf<Tile?>(Tile(TileType.One), Tile(TileType.Two)),
             listOf<Tile?>(Tile(TileType.Three), Tile(TileType.One))
-        )
+        ).simplifyToTileType()
         input
             .transpose2DTileList()
+            .simplifyToTileType()
             .let { assertTrue(it == expected) }
     }
 
@@ -50,9 +53,14 @@ class TransposeTest {
         val expected = listOf(
             listOf<Tile?>(Tile(TileType.One), Tile(TileType.Two)),
             listOf<Tile?>(Tile(TileType.Three), Tile(TileType.Four))
-        )
+        ).simplifyToTileType()
         input
             .transpose2DTileList()
+            .simplifyToTileType()
             .let { assertTrue(it == expected) }
+    }
+
+    private fun List<List<Tile?>>.simplifyToTileType(): List<List<TileType?>> {
+        return this.map { it.map { it?.type } }
     }
 }
