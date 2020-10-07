@@ -27,7 +27,11 @@ class GameView @JvmOverloads constructor(
         handleTouchEvents()
     }
 
-    private val state = State(numTilesSize)
+    private var state = State(
+        tiles = getInitialBoard(numTilesSize),
+        invisibleTiles = getInitialBoard(numTilesSize),
+        stepState = CheckForFallableTiles
+    )
 
     // will be instantiated after view is measured.
     private val screenContext by lazy {
@@ -51,18 +55,18 @@ class GameView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        state.updateBoard { tick ->
-            renderNewlyVisibleTiles(canvas, tick)
+        state = state.updateBoard { nextState, tick ->
+            nextState.renderNewlyVisibleTiles(canvas, screenContext, tick)
 
             (0 until numTilesSize).forEach { x ->
                 (0 until numTilesSize).forEach { y ->
-                    state.tiles[x][y]?.render(
+                    nextState.tiles[x][y]?.render(
                         x = x,
                         y = y,
                         canvas = canvas,
                         screenContext = screenContext,
                         tick = tick,
-                        state = state.currentState
+                        stepState = nextState.stepState
                     )
                 }
             }
@@ -74,12 +78,12 @@ class GameView @JvmOverloads constructor(
     }
 
     fun setDirectionToFallFrom(directionToFallFrom: GravitySensor.TileFromDirection) {
-        state.directionToFallFrom = directionToFallFrom
+        state.setDirectionToFallFrom(directionToFallFrom)
     }
 
     private fun handleTouchEvents() {
         setOnTouchListener(OnInputTouchListener { touchInfo ->
-            if (state.currentState == WaitForInput) {
+            if (state.stepState == WaitForInput) {
                 val xTouchInGrid = touchInfo.xTouch - screenContext.gridStartX
                 val xTile = floor(xTouchInGrid / screenContext.gridSize * numTilesSize).toInt()
 
@@ -122,16 +126,15 @@ class GameView @JvmOverloads constructor(
             edgeOfBoardColor
         )
     }
+}
 
-    private fun renderNewlyVisibleTiles(canvas: Canvas, tick: Int) {
-        if (state.currentState !is TilesFalling) return
-
-        val fixTilesByGravity = state.tiles.fixTilesByGravity(state.directionToFallFrom)
-        (0 until numTilesSize).forEach { i ->
-            if (null in fixTilesByGravity[i]) {
-                state.invisibleTiles[i]
-                    .last()
-                    ?.renderNewlyVisible(i, canvas, screenContext, tick, state.currentState)
+fun getInitialBoard(numTilesSize: Int): List<List<Tile?>> {
+    return (0 until numTilesSize).map { x ->
+        (0 until numTilesSize).map { y ->
+            //when(true) {
+            when ((y + x) % 3 == 0) {
+                true -> Tile(TileType.values().slice(0 until GameView.numTileTypes).random())
+                false -> null
             }
         }
     }
