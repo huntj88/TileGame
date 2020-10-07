@@ -2,9 +2,9 @@
 The custom view has a grid of falling tiles that will always fall down according to gravity (rotate/tilt phone).
 If more than 3 (adjustable) tiles of the same color are in a row, then remove the tiles
 #### Configurable variables:
-    1. numTilesSize:    defualt 8       number of tiles across grid is
-    2. numTileTypes:    default 3       number of unique tile types, currently represented with a solid color
-    3. numToMatch:      default 3       number in a row to be considered a match
+    1. numTilesSize:    defualt 8   Number of tiles across the grid is
+    2. numTileTypes:    default 3   Number of unique tile types, currently represented with a solid color
+    3. numToMatch:      default 3   Number of consecutive tiles of same type to be considered a match
 
 # Code
 Quick sliding tile experiment app to play around with some state machine concepts.
