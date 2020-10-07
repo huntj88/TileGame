@@ -13,12 +13,12 @@ enum class TileType {
     Six;
 
     private companion object {
-        val paint1 = Paint().apply { color = Color.BLUE }
-        val paint2 = Paint().apply { color = Color.RED }
-        val paint3 = Paint().apply { color = Color.GREEN }
-        val paint4 = Paint().apply { color = Color.CYAN }
-        val paint5 = Paint().apply { color = Color.MAGENTA }
-        val paint6 = Paint().apply { color = Color.YELLOW }
+        val paint1 by lazy { Paint().apply { color = Color.BLUE } }
+        val paint2 by lazy { Paint().apply { color = Color.RED } }
+        val paint3 by lazy { Paint().apply { color = Color.GREEN } }
+        val paint4 by lazy { Paint().apply { color = Color.CYAN } }
+        val paint5 by lazy { Paint().apply { color = Color.MAGENTA } }
+        val paint6 by lazy { Paint().apply { color = Color.YELLOW } }
     }
 
     val paint: Paint
@@ -32,7 +32,7 @@ enum class TileType {
         }
 }
 
-class Tile(val type: TileType) {
+data class Tile(val type: TileType) {
     fun render(
         x: TileXCoord,
         y: TileYCoord,
@@ -174,4 +174,18 @@ class Tile(val type: TileType) {
         val x: Float,
         val y: Float
     )
+}
+
+fun List<List<Tile?>>.transpose2DTileList(): List<List<Tile?>> {
+    val new = this[0].indices
+        .map { this.indices.map { null }.toMutableList<Tile?>() }
+        .toMutableList()
+
+    this.indices.forEach { x ->
+        this[x].indices.forEach { y ->
+            new[y][x] = this[x][y]
+        }
+    }
+
+    return new
 }

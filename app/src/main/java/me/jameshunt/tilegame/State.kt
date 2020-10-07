@@ -259,21 +259,6 @@ class State {
     }
 }
 
-
-private fun List<List<Tile?>>.transpose2DTileList(): List<List<Tile?>> {
-    val new = this[0].indices
-        .map { this.indices.map { null }.toMutableList<Tile?>() }
-        .toMutableList()
-
-    this.indices.forEach { x ->
-        this[x].indices.forEach { y ->
-            new[y][x] = this[x][y]
-        }
-    }
-
-    return new
-}
-
 fun List<List<Tile?>>.fixTilesByGravity(directionToFallFrom: GravitySensor.TileFromDirection): List<List<Tile?>> {
     fun List<List<Tile?>>.reverseGrid(): List<List<Tile?>> =
         this.map { it.reversed() }.reversed()
