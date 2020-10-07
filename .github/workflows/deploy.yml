@@ -21,16 +21,15 @@ jobs:
       - name: Build and Test
         run: ./gradlew test
 
+      - name: Will check to see if should tag new version, fail otherwise
+        run: echo "documentation https://github.com/anothrNick/github-tag-action"
+
       - name: Bump version and push tag
         uses: anothrNick/github-tag-action@1.26.0
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           RELEASE_BRANCHES: master
           DEFAULT_BUMP: none
-
-      - name: Check version was bumped or exit
-        if: ${{ env.part != null }}
-        run: echo "checked any part of version bumped"
 
       - name: Generate Release Bundle
         run: ./gradlew bundleRelease
