@@ -44,100 +44,92 @@ sealed class GameState {
         }
 }
 
-class State(private val numTilesSize: Int) {
-    private var tick = 0
-
-    var invisibleTiles: List<List<Tile?>> = getInitialBoard()
-    var tiles: List<List<Tile?>> = getInitialBoard()
-    var stepState: GameState = GameState.CheckForFallableTiles
-
+data class State(
+    private val numTilesSize: Int,
+    val invisibleTiles: List<List<Tile?>>,
+    val tiles: List<List<Tile?>>,
+    val stepState: GameState,
+    private val tick: Int
+) {
     var lastInput: Input? = null
-    var directionToFallFrom = GravitySensor.TileFromDirection.Top
-        set(value) {
-            if (stepState !is GameState.TilesFalling) {
-                field = value
-            }
-        }
+    var directionToFallFrom: GravitySensor.TileFromDirection? = null
+        private set
 
-    private fun getInitialBoard(): List<List<Tile?>> {
-        return (0 until numTilesSize).map { x ->
-            (0 until numTilesSize).map { y ->
-                //when(true) {
-                when ((y + x) % 3 == 0) {
-                    true -> Tile(TileType.values().slice(0 until GameView.numTileTypes).random())
-                    false -> null
+    fun setDirectionToFallFrom(directionToFallFrom: GravitySensor.TileFromDirection) {
+        if (stepState !is GameState.TilesFalling) {
+            this.directionToFallFrom = directionToFallFrom
+        }
+    }
+
+    fun updateBoard(render: (nextState: State, tick: Int) -> Unit): State {
+        if(directionToFallFrom == null) {
+            directionToFallFrom = GravitySensor.TileFromDirection.Top
+        }
+        val nextState = stepThroughStateMachine().copy(tick = tick + 1)
+        nextState.directionToFallFrom = this.directionToFallFrom
+
+        render(nextState , tick)
+        return nextState
+    }
+
+    private fun stepThroughStateMachine(): State {
+        return when (val state = stepState) {
+            is GameState.WaitForInput -> lastInput
+                ?.let { this
+                    .copy(stepState = GameState.InputDetected(it, tick))
+                    .apply { lastInput = null }
                 }
-            }
-        }
-    }
-
-    private fun GameState.onAnimationCompleted(startTick: Int, action: () -> Unit) {
-        val isStarting = tick == startTick
-        val isStartingOrEnding = (tick - startTick) % tickDuration == 0
-        val isEnding = !isStarting && isStartingOrEnding
-        if (isEnding) {
-            action()
-        }
-    }
-
-    fun updateBoard(render: (tick: Int) -> Unit) {
-        stepThroughStateMachine()
-        render(tick)
-        tick += 1
-    }
-
-    private fun stepThroughStateMachine() {
-        when (val state = stepState) {
-            is GameState.WaitForInput -> lastInput?.let {
-                stepState = GameState.InputDetected(it, tick)
-                lastInput = null
-            }
+                ?: this
             is GameState.InputDetected -> state.onAnimationCompleted(state.startTick) {
                 val input = state.input
                 val touchedTile = tiles[input.touched.x][input.touched.y]
                 val switchWithTile = tiles[input.switchWith.x][input.switchWith.y]
 
-                tiles = tiles.map { column ->
-                    column.map { tile ->
-                        when (tile) {
-                            touchedTile -> switchWithTile
-                            switchWithTile -> touchedTile
-                            else -> tile
+                return@onAnimationCompleted this.copy(
+                    tiles = tiles.map { column ->
+                        column.map { tile ->
+                            when (tile) {
+                                touchedTile -> switchWithTile
+                                switchWithTile -> touchedTile
+                                else -> tile
+                            }
                         }
+                    },
+                    stepState = when (state.switchBackIfNoPoints) {
+                        true -> GameState.CheckForPoints(state)
+                        false -> GameState.WaitForInput
                     }
-                }
-
-                stepState = when (state.switchBackIfNoPoints) {
-                    true -> GameState.CheckForPoints(state)
-                    false -> GameState.WaitForInput
-                }
+                )
             }
             is GameState.CheckForFallableTiles -> {
                 // find lowest fallable posY of each row
                 // if any fallable tiles set current state to TilesFalling
                 // if no fallable tiles set current state to CheckForPoints
 
-                val gravityFixedTiles = tiles.fixTilesByGravity(directionToFallFrom)
+                val gravityFixedTiles = tiles.fixTilesByGravity(directionToFallFrom!!)
 
-                val lowestPosYOfFallableTiles: List<TileYCoord> = gravityFixedTiles.map { tileColumn ->
-                    val lowestPosOfNullTile = tileColumn.indexOfLast { it == null }
-                    (0 until lowestPosOfNullTile)
-                        .map { tileColumn[it] }
-                        .indexOfLast { it != null }
-                }
+                val lowestPosYOfFallableTiles: List<TileYCoord> =
+                    gravityFixedTiles.map { tileColumn ->
+                        val lowestPosOfNullTile = tileColumn.indexOfLast { it == null }
+                        (0 until lowestPosOfNullTile)
+                            .map { tileColumn[it] }
+                            .indexOfLast { it != null }
+                    }
                 val doneFalling = lowestPosYOfFallableTiles.foldIndexed(true) { index, acc, posY ->
                     val indexOfBottomTile = numTilesSize - 1
                     acc && (posY == indexOfBottomTile || null !in gravityFixedTiles[index])
                 }
 
-                stepState = when (doneFalling) {
-                    true -> GameState.CheckForPoints(null)
-                    false -> GameState.TilesFalling(
-                        tick,
-                        lowestPosYOfFallableTiles,
-                        directionToFallFrom
-                    )
-                }
+                this.copy(
+                    stepState = when (doneFalling) {
+                        true -> GameState.CheckForPoints(null)
+                        false -> GameState.TilesFalling(
+                            tick,
+                            lowestPosYOfFallableTiles,
+                            directionToFallFrom!!
+                        )
+                    }
+                )
             }
             is GameState.TilesFalling -> state.onAnimationCompleted(state.startTick) {
                 // shift ones that fell to tile spot below
@@ -161,7 +153,7 @@ class State(private val numTilesSize: Int) {
                     return tilesThatFell + tilesThatDidNotFall
                 }
 
-                val joinedGridShift = tiles.fixTilesByGravity(directionToFallFrom)
+                val joinedGridShift = tiles.fixTilesByGravity(directionToFallFrom!!)
                     .mapIndexed { index, list -> invisibleTiles[index] + list }
                     .mapIndexed { index, arrayOfTiles ->
                         val lowestFallableTile =
@@ -169,13 +161,14 @@ class State(private val numTilesSize: Int) {
                         arrayOfTiles.shiftTilesInColumnDown(lowestFallableTile)
                     }
 
-                invisibleTiles = joinedGridShift.map { it.subList(0, numTilesSize) }
+                return@onAnimationCompleted this.copy(
+                    invisibleTiles = joinedGridShift.map { it.subList(0, numTilesSize) },
+                    tiles = joinedGridShift
+                        .map { it.subList(numTilesSize, numTilesSize * 2) }
+                        .fixTilesByGravity(directionToFallFrom!!),
+                    stepState = GameState.CheckForFallableTiles
+                )
 
-                tiles = joinedGridShift
-                    .map { it.subList(numTilesSize, numTilesSize * 2) }
-                    .fixTilesByGravity(directionToFallFrom)
-
-                stepState = GameState.CheckForFallableTiles
             }
             is GameState.CheckForPoints -> {
                 fun List<Tile>.checkMatchesInColumnOrTransposedRow(): List<Tile?> {
@@ -246,26 +239,40 @@ class State(private val numTilesSize: Int) {
                     acc && isColumnSame()
                 }
 
-                stepState = when (isBoardSame) {
-                    true -> when (state.previousInput == null) {
-                        true -> GameState.WaitForInput
-                        false -> GameState.InputDetected(
-                            input = Input(
-                                touched = state.previousInput.input.switchWith,
-                                switchWith = state.previousInput.input.touched,
-                                direction = state.previousInput.input.direction.opposite()
-                            ),
-                            startTick = tick,
-                            switchBackIfNoPoints = false
-                        )
+                this.copy(
+                    stepState = when (isBoardSame) {
+                        true -> when (state.previousInput == null) {
+                            true -> GameState.WaitForInput
+                            false -> GameState.InputDetected(
+                                input = Input(
+                                    touched = state.previousInput.input.switchWith,
+                                    switchWith = state.previousInput.input.touched,
+                                    direction = state.previousInput.input.direction.opposite()
+                                ),
+                                startTick = tick,
+                                switchBackIfNoPoints = false
+                            )
+                        }
+                        false -> GameState.RemovingTiles(tick, mergedMatches)
                     }
-                    false -> GameState.RemovingTiles(tick, mergedMatches)
-                }
+                )
             }
             is GameState.RemovingTiles -> state.onAnimationCompleted(state.startTick) {
-                tiles = state.newBoardAfterRemove
-                stepState = GameState.CheckForFallableTiles
+                return@onAnimationCompleted this.copy(
+                    tiles = state.newBoardAfterRemove,
+                    stepState = GameState.CheckForFallableTiles
+                )
             }
+        }
+    }
+
+    private fun GameState.onAnimationCompleted(startTick: Int, nextState: () -> State): State {
+        val isStarting = tick == startTick
+        val isStartingOrEnding = (tick - startTick) % tickDuration == 0
+        val isEnding = !isStarting && isStartingOrEnding
+        return when (isEnding) {
+            true -> nextState()
+            false -> this@State // if in middle of animation then state not changing, return current state
         }
     }
 }

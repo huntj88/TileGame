@@ -177,6 +177,19 @@ data class Tile(val type: TileType) {
     )
 }
 
+fun State.renderNewlyVisibleTiles(canvas: Canvas, screenContext: ScreenContext, tick: Int) {
+    if (stepState !is GameState.TilesFalling) return
+
+    val fixTilesByGravity = tiles.fixTilesByGravity(directionToFallFrom!!)
+    (0 until GameView.numTilesSize).forEach { i ->
+        if (null in fixTilesByGravity[i]) {
+            invisibleTiles[i]
+                .last()
+                ?.renderNewlyVisible(i, canvas, screenContext, tick, stepState)
+        }
+    }
+}
+
 fun List<List<Tile?>>.transpose2DTileList(): List<List<Tile?>> {
     val new = this[0].indices
         .map { this.indices.map { null }.toMutableList<Tile?>() }
