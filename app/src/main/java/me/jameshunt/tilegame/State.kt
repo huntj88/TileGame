@@ -49,12 +49,12 @@ class State(private val numTilesSize: Int) {
 
     var invisibleTiles: List<List<Tile?>> = getInitialBoard()
     var tiles: List<List<Tile?>> = getInitialBoard()
-    var currentState: GameState = GameState.CheckForFallableTiles
+    var stepState: GameState = GameState.CheckForFallableTiles
 
     var lastInput: Input? = null
     var directionToFallFrom = GravitySensor.TileFromDirection.Top
         set(value) {
-            if (currentState !is GameState.TilesFalling) {
+            if (stepState !is GameState.TilesFalling) {
                 field = value
             }
         }
@@ -80,12 +80,16 @@ class State(private val numTilesSize: Int) {
         }
     }
 
-    // updates using state machine concepts
-    // will evaluate current state and progress to the next state
     fun updateBoard(render: (tick: Int) -> Unit) {
-        when (val state = currentState) {
+        stepThroughStateMachine()
+        render(tick)
+        tick += 1
+    }
+
+    private fun stepThroughStateMachine() {
+        when (val state = stepState) {
             is GameState.WaitForInput -> lastInput?.let {
-                currentState = GameState.InputDetected(it, tick)
+                stepState = GameState.InputDetected(it, tick)
                 lastInput = null
             }
             is GameState.InputDetected -> state.onAnimationCompleted(state.startTick) {
@@ -103,7 +107,7 @@ class State(private val numTilesSize: Int) {
                     }
                 }
 
-                currentState = when (state.switchBackIfNoPoints) {
+                stepState = when (state.switchBackIfNoPoints) {
                     true -> GameState.CheckForPoints(state)
                     false -> GameState.WaitForInput
                 }
@@ -126,7 +130,7 @@ class State(private val numTilesSize: Int) {
                     acc && (posY == indexOfBottomTile || null !in gravityFixedTiles[index])
                 }
 
-                currentState = when (doneFalling) {
+                stepState = when (doneFalling) {
                     true -> GameState.CheckForPoints(null)
                     false -> GameState.TilesFalling(
                         tick,
@@ -136,7 +140,6 @@ class State(private val numTilesSize: Int) {
                 }
             }
             is GameState.TilesFalling -> state.onAnimationCompleted(state.startTick) {
-
                 // shift ones that fell to tile spot below
                 // set current state to CheckForFallableTiles
 
@@ -172,7 +175,7 @@ class State(private val numTilesSize: Int) {
                     .map { it.subList(numTilesSize, numTilesSize * 2) }
                     .fixTilesByGravity(directionToFallFrom)
 
-                currentState = GameState.CheckForFallableTiles
+                stepState = GameState.CheckForFallableTiles
             }
             is GameState.CheckForPoints -> {
                 fun List<Tile>.checkMatchesInColumnOrTransposedRow(): List<Tile?> {
@@ -229,7 +232,6 @@ class State(private val numTilesSize: Int) {
                 check(horizontalMatches.size == verticalMatches.size)
                 check(horizontalMatches[0].size == verticalMatches[0].size)
 
-
                 val mergedMatches = verticalMatches.mapIndexed { x, columns ->
                     columns.mapIndexed { y, verticalMatchTile ->
                         when (val horizontalMatchTile = horizontalMatches[x][y]) {
@@ -244,7 +246,7 @@ class State(private val numTilesSize: Int) {
                     acc && isColumnSame()
                 }
 
-                currentState = when (isBoardSame) {
+                stepState = when (isBoardSame) {
                     true -> when (state.previousInput == null) {
                         true -> GameState.WaitForInput
                         false -> GameState.InputDetected(
@@ -262,12 +264,9 @@ class State(private val numTilesSize: Int) {
             }
             is GameState.RemovingTiles -> state.onAnimationCompleted(state.startTick) {
                 tiles = state.newBoardAfterRemove
-                currentState = GameState.CheckForFallableTiles
+                stepState = GameState.CheckForFallableTiles
             }
         }
-
-        render(tick)
-        tick += 1
     }
 }
 

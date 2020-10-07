@@ -62,7 +62,7 @@ class GameView @JvmOverloads constructor(
                         canvas = canvas,
                         screenContext = screenContext,
                         tick = tick,
-                        state = state.currentState
+                        state = state.stepState
                     )
                 }
             }
@@ -79,7 +79,7 @@ class GameView @JvmOverloads constructor(
 
     private fun handleTouchEvents() {
         setOnTouchListener(OnInputTouchListener { touchInfo ->
-            if (state.currentState == WaitForInput) {
+            if (state.stepState == WaitForInput) {
                 val xTouchInGrid = touchInfo.xTouch - screenContext.gridStartX
                 val xTile = floor(xTouchInGrid / screenContext.gridSize * numTilesSize).toInt()
 
@@ -124,14 +124,14 @@ class GameView @JvmOverloads constructor(
     }
 
     private fun renderNewlyVisibleTiles(canvas: Canvas, tick: Int) {
-        if (state.currentState !is TilesFalling) return
+        if (state.stepState !is TilesFalling) return
 
         val fixTilesByGravity = state.tiles.fixTilesByGravity(state.directionToFallFrom)
         (0 until numTilesSize).forEach { i ->
             if (null in fixTilesByGravity[i]) {
                 state.invisibleTiles[i]
                     .last()
-                    ?.renderNewlyVisible(i, canvas, screenContext, tick, state.currentState)
+                    ?.renderNewlyVisible(i, canvas, screenContext, tick, state.stepState)
             }
         }
     }

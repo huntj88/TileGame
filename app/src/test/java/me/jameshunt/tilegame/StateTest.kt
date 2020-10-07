@@ -12,12 +12,12 @@ class StateTest {
                 listOf(Tile(TileType.One), Tile(TileType.One)),
                 listOf(Tile(TileType.One), Tile(TileType.One))
             )
-            assertEquals(GameState.CheckForFallableTiles, currentState)
+            assertEquals(GameState.CheckForFallableTiles, stepState)
             updateBoard {}
 
-            assertTrue(currentState is GameState.CheckForPoints)
+            assertTrue(stepState is GameState.CheckForPoints)
             updateBoard {}
-            assertTrue(currentState is GameState.WaitForInput)
+            assertTrue(stepState is GameState.WaitForInput)
         }
     }
 
@@ -36,9 +36,9 @@ class StateTest {
             assertShouldFallThenMoveBackToCheck()
 
             updateBoard {}
-            assertTrue(currentState is GameState.CheckForPoints)
+            assertTrue(stepState is GameState.CheckForPoints)
             updateBoard {}
-            assertTrue(currentState is GameState.WaitForInput)
+            assertTrue(stepState is GameState.WaitForInput)
         }
     }
 
@@ -51,14 +51,14 @@ class StateTest {
                 listOf(Tile(TileType.One), Tile(TileType.Three), Tile(TileType.Two))
             )
             updateBoard {}
-            assertTrue(currentState is GameState.CheckForPoints)
+            assertTrue(stepState is GameState.CheckForPoints)
 
             updateBoard {}
-            assertTrue(currentState is GameState.RemovingTiles)
+            assertTrue(stepState is GameState.RemovingTiles)
 
             // all ones are removed. two ways of 3 in a row
 
-            (currentState as GameState.RemovingTiles).newBoardAfterRemove.let { newBoard ->
+            (stepState as GameState.RemovingTiles).newBoardAfterRemove.let { newBoard ->
                 newBoard.first().forEach { assertTrue(it == null) }
                 assertTrue(newBoard[1][0] == null)
                 assertTrue(newBoard[2][0] == null)
@@ -72,14 +72,14 @@ class StateTest {
             .TilesFalling(0, emptyList(), GravitySensor.TileFromDirection.Top)
             .tickDuration
 
-        assertEquals(GameState.CheckForFallableTiles, currentState)
+        assertEquals(GameState.CheckForFallableTiles, stepState)
 
         (0 until fallingTickDuration).forEach {
             updateBoard {}
-            assertTrue(currentState is GameState.TilesFalling)
+            assertTrue(stepState is GameState.TilesFalling)
         }
         updateBoard {}
-        assertEquals(GameState.CheckForFallableTiles, currentState)
+        assertEquals(GameState.CheckForFallableTiles, stepState)
         println("fell one tile")
     }
 }
