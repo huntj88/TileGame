@@ -3,20 +3,24 @@ package me.jameshunt.tilegame
 typealias TileXCoord = Int
 typealias TileYCoord = Int
 
+data class Input(
+    val touched: TileCoordinate,
+    val switchWith: TileCoordinate,
+    val direction: OnInputTouchListener.Direction
+) {
+    data class TileCoordinate(
+        val x: TileXCoord,
+        val y: TileYCoord
+    )
+}
+
 sealed class GameState {
     object WaitForInput : GameState()
     data class InputDetected(
-        val touched: TileCoordinate,
-        val switchWith: TileCoordinate,
-        val direction: OnInputTouchListener.Direction,
+        val input: Input,
         val startTick: Int,
         val switchBackIfNoPoints: Boolean = true
-    ) : GameState() {
-        data class TileCoordinate(
-            val x: TileXCoord,
-            val y: TileYCoord
-        )
-    }
+    ) : GameState()
 
     object CheckForFallableTiles : GameState()
     data class TilesFalling(
@@ -40,11 +44,14 @@ sealed class GameState {
         }
 }
 
-class State {
+class State(private val numTilesSize: Int) {
+    private var tick = 0
+
     var invisibleTiles: List<List<Tile?>> = getInitialBoard()
     var tiles: List<List<Tile?>> = getInitialBoard()
     var currentState: GameState = GameState.CheckForFallableTiles
-    var tick = 0
+
+    var lastInput: Input? = null
     var directionToFallFrom = GravitySensor.TileFromDirection.Top
         set(value) {
             if (currentState !is GameState.TilesFalling) {
@@ -53,8 +60,8 @@ class State {
         }
 
     private fun getInitialBoard(): List<List<Tile?>> {
-        return (0 until GameView.numTilesSize).map { x ->
-            (0 until GameView.numTilesSize).map { y ->
+        return (0 until numTilesSize).map { x ->
+            (0 until numTilesSize).map { y ->
                 //when(true) {
                 when ((y + x) % 3 == 0) {
                     true -> Tile(TileType.values().slice(0 until GameView.numTileTypes).random())
@@ -75,15 +82,16 @@ class State {
 
     // updates using state machine concepts
     // will evaluate current state and progress to the next state
-    fun updateBoard() {
+    fun updateBoard(render: (tick: Int) -> Unit) {
         when (val state = currentState) {
-            is GameState.WaitForInput -> {
-                // noOp
+            is GameState.WaitForInput -> lastInput?.let {
+                currentState = GameState.InputDetected(it, tick)
+                lastInput = null
             }
             is GameState.InputDetected -> state.onAnimationCompleted(state.startTick) {
-                val touchedTile = tiles[state.touched.x][state.touched.y]
-                val switchWithTile =
-                    tiles[state.switchWith.x][state.switchWith.y]
+                val input = state.input
+                val touchedTile = tiles[input.touched.x][input.touched.y]
+                val switchWithTile = tiles[input.switchWith.x][input.switchWith.y]
 
                 tiles = tiles.map { column ->
                     column.map { tile ->
@@ -101,7 +109,6 @@ class State {
                 }
             }
             is GameState.CheckForFallableTiles -> {
-
                 // find lowest fallable posY of each row
                 // if any fallable tiles set current state to TilesFalling
                 // if no fallable tiles set current state to CheckForPoints
@@ -115,7 +122,7 @@ class State {
                         .indexOfLast { it != null }
                 }
                 val doneFalling = lowestPosYOfFallableTiles.foldIndexed(true) { index, acc, posY ->
-                    val indexOfBottomTile = GameView.numTilesSize - 1
+                    val indexOfBottomTile = numTilesSize - 1
                     acc && (posY == indexOfBottomTile || null !in gravityFixedTiles[index])
                 }
 
@@ -143,7 +150,7 @@ class State {
 
                     val tilesThatFell = newTopTile + this.subList(0, lowestFallableTile + 1)
 
-                    val indexOfBottomTile = (GameView.numTilesSize * 2) - 1
+                    val indexOfBottomTile = (numTilesSize * 2) - 1
 
                     val tilesThatDidNotFall = (lowestFallableTile + 2..indexOfBottomTile)
                         .map { this[it] }
@@ -155,14 +162,14 @@ class State {
                     .mapIndexed { index, list -> invisibleTiles[index] + list }
                     .mapIndexed { index, arrayOfTiles ->
                         val lowestFallableTile =
-                            state.lowestPosYOfFallableTiles[index] + GameView.numTilesSize
+                            state.lowestPosYOfFallableTiles[index] + numTilesSize
                         arrayOfTiles.shiftTilesInColumnDown(lowestFallableTile)
                     }
 
-                invisibleTiles = joinedGridShift.map { it.subList(0, GameView.numTilesSize) }
+                invisibleTiles = joinedGridShift.map { it.subList(0, numTilesSize) }
 
                 tiles = joinedGridShift
-                    .map { it.subList(GameView.numTilesSize, GameView.numTilesSize * 2) }
+                    .map { it.subList(numTilesSize, numTilesSize * 2) }
                     .fixTilesByGravity(directionToFallFrom)
 
                 currentState = GameState.CheckForFallableTiles
@@ -241,9 +248,11 @@ class State {
                     true -> when (state.previousInput == null) {
                         true -> GameState.WaitForInput
                         false -> GameState.InputDetected(
-                            touched = state.previousInput.switchWith,
-                            switchWith = state.previousInput.touched,
-                            direction = state.previousInput.direction.opposite(),
+                            input = Input(
+                                touched = state.previousInput.input.switchWith,
+                                switchWith = state.previousInput.input.touched,
+                                direction = state.previousInput.input.direction.opposite()
+                            ),
                             startTick = tick,
                             switchBackIfNoPoints = false
                         )
@@ -256,22 +265,10 @@ class State {
                 currentState = GameState.CheckForFallableTiles
             }
         }
+
+        render(tick)
+        tick += 1
     }
-}
-
-
-private fun List<List<Tile?>>.transpose2DTileList(): List<List<Tile?>> {
-    val new = this[0].indices
-        .map { this.indices.map { null }.toMutableList<Tile?>() }
-        .toMutableList()
-
-    this.indices.forEach { x ->
-        this[x].indices.forEach { y ->
-            new[y][x] = this[x][y]
-        }
-    }
-
-    return new
 }
 
 fun List<List<Tile?>>.fixTilesByGravity(directionToFallFrom: GravitySensor.TileFromDirection): List<List<Tile?>> {

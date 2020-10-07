@@ -5,7 +5,7 @@ Quick demo app to play around with some state machine concepts.
 When a new commit is added to the master branch a github action for deploying to Google Play is started.
 #### Action Steps:
     1. Checkout master branch
-    2. Build And Test
+    2. Build And run unit tests
     3. Tag with a new version number
     4. Assemble Android app Bundle
     5. Sign the bundle with the release key
