@@ -6,8 +6,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
-import me.jameshunt.tilegame.GameState.*
-import me.jameshunt.tilegame.OnInputTouchListener.Direction
+import me.jameshunt.tilegame.Step.*
+import me.jameshunt.tilegame.input.*
 import kotlin.math.floor
 import kotlin.math.min
 
@@ -20,18 +20,13 @@ class GameView @JvmOverloads constructor(
     companion object {
         const val numTilesSize = 8
         const val numTileTypes = 3 // max of 6 at the moment, add more in TileType
+        const val numToMatch = 3
     }
 
     init {
         setBackgroundColor(Color.GRAY)
         handleTouchEvents()
     }
-
-    private var state = State(
-        tiles = getInitialBoard(numTilesSize),
-        invisibleTiles = getInitialBoard(numTilesSize),
-        stepState = CheckForFallableTiles
-    )
 
     // will be instantiated after view is measured.
     private val screenContext by lazy {
@@ -52,24 +47,22 @@ class GameView @JvmOverloads constructor(
         ScreenContext(gridSize, gridStartX, gridStartY)
     }
 
+    private val tileRenderer = TileRenderer()
+    private val externalInput = ExternalInput()
+
+    private var state = State(
+        tiles = getInitialSparseBoard(numTilesSize),
+        invisibleTiles = getInitialSparseBoard(numTilesSize),
+        step = CheckForFallableTiles,
+        externalInput = externalInput
+    )
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
+        // set current state to next state after update
         state = state.updateBoard { nextState, tick ->
-            nextState.renderNewlyVisibleTiles(canvas, screenContext, tick)
-
-            (0 until numTilesSize).forEach { x ->
-                (0 until numTilesSize).forEach { y ->
-                    nextState.tiles[x][y]?.render(
-                        x = x,
-                        y = y,
-                        canvas = canvas,
-                        screenContext = screenContext,
-                        tick = tick,
-                        stepState = nextState.stepState
-                    )
-                }
-            }
+            nextState.renderTileGrid(tileRenderer, canvas, screenContext, tick)
         }
 
         drawEdgesOfBoard(canvas, screenContext)
@@ -77,33 +70,33 @@ class GameView @JvmOverloads constructor(
         invalidate()
     }
 
-    fun setDirectionToFallFrom(directionToFallFrom: GravitySensor.TileFromDirection) {
-        state.setDirectionToFallFrom(directionToFallFrom)
+    fun setDirectionToFallFrom(directionToFallFrom: FallFromDirection) {
+        externalInput.setDirectionToFallFrom(state.step, directionToFallFrom)
     }
 
     private fun handleTouchEvents() {
         setOnTouchListener(OnInputTouchListener { touchInfo ->
-            if (state.stepState == WaitForInput) {
-                val xTouchInGrid = touchInfo.xTouch - screenContext.gridStartX
-                val xTile = floor(xTouchInGrid / screenContext.gridSize * numTilesSize).toInt()
+            if (state.step != WaitForInput) return@OnInputTouchListener
 
-                val yTouchInGrid = touchInfo.yTouch - screenContext.gridStartY
-                val yTile = floor(yTouchInGrid / screenContext.gridSize * numTilesSize).toInt()
+            val xTouchInGrid = touchInfo.xTouch - screenContext.gridStartX
+            val xTile = floor(xTouchInGrid / screenContext.gridSize * numTilesSize).toInt()
 
-                val touched = Input.TileCoordinate(xTile, yTile)
-                val switchWith = when (touchInfo.direction) {
-                    Direction.Up -> Input.TileCoordinate(xTile, yTile - 1)
-                    Direction.Down -> Input.TileCoordinate(xTile, yTile + 1)
-                    Direction.Left -> Input.TileCoordinate(xTile - 1, yTile)
-                    Direction.Right -> Input.TileCoordinate(xTile + 1, yTile)
-                }
+            val yTouchInGrid = touchInfo.yTouch - screenContext.gridStartY
+            val yTile = floor(yTouchInGrid / screenContext.gridSize * numTilesSize).toInt()
 
-                val validXMove = switchWith.x in (0 until numTilesSize)
-                val validYMove = switchWith.y in (0 until numTilesSize)
+            val touched = TouchInput.TileCoordinate(xTile, yTile)
+            val switchWith = when (touchInfo.moveDirection) {
+                MoveDirection.Up -> TouchInput.TileCoordinate(xTile, yTile - 1)
+                MoveDirection.Down -> TouchInput.TileCoordinate(xTile, yTile + 1)
+                MoveDirection.Left -> TouchInput.TileCoordinate(xTile - 1, yTile)
+                MoveDirection.Right -> TouchInput.TileCoordinate(xTile + 1, yTile)
+            }
 
-                if (validXMove && validYMove) {
-                    state.lastInput = Input(touched, switchWith, touchInfo.direction)
-                }
+            val validXMove = switchWith.x in (0 until numTilesSize)
+            val validYMove = switchWith.y in (0 until numTilesSize)
+
+            if (validXMove && validYMove) {
+                externalInput.lastTouchInput = TouchInput(touched, switchWith, touchInfo.moveDirection)
             }
         })
     }
@@ -125,18 +118,6 @@ class GameView @JvmOverloads constructor(
             height.toFloat(),
             edgeOfBoardColor
         )
-    }
-}
-
-fun getInitialBoard(numTilesSize: Int): List<List<Tile?>> {
-    return (0 until numTilesSize).map { x ->
-        (0 until numTilesSize).map { y ->
-            //when(true) {
-            when ((y + x) % 3 == 0) {
-                true -> Tile(TileType.values().slice(0 until GameView.numTileTypes).random())
-                false -> null
-            }
-        }
     }
 }
 

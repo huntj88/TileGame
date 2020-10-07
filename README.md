@@ -1,5 +1,6 @@
-# TileGame
-Quick demo app to play around with some state machine concepts.
+# Code
+Quick sliding tile experiment app to play around with some state machine concepts.
+Written in a functional style with immutable data structures to hold game state, except for user input
 
 # CI/CD setup
 When a new commit is added to the master branch a github action for deploying to Google Play is started.

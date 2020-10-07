@@ -1,7 +1,8 @@
-package me.jameshunt.tilegame
+package me.jameshunt.tilegame.input
 
 import android.view.MotionEvent
 import android.view.View
+import me.jameshunt.tilegame.GameView
 import kotlin.math.absoluteValue
 import kotlin.math.max
 import kotlin.math.min
@@ -25,7 +26,7 @@ class OnInputTouchListener(
 
                 val minMoveDistance = min(v.width, v.height) / (GameView.numTilesSize * 3f)
                 if (max(xDiff.absoluteValue, yDiff.absoluteValue) > minMoveDistance) {
-                    val direction = Direction.from(xDiff, yDiff)
+                    val direction = moveDirectionFrom(xDiff, yDiff)
                     inputDetectedHandler(TouchInfo(startX, startY, direction))
                 }
             }
@@ -34,32 +35,16 @@ class OnInputTouchListener(
         return true
     }
 
+    private fun moveDirectionFrom(xDiff: Float, yDiff: Float): MoveDirection {
+        return when (xDiff.absoluteValue > yDiff.absoluteValue) {
+            true -> if (xDiff > 0) MoveDirection.Right else MoveDirection.Left
+            false -> if (yDiff > 0) MoveDirection.Down else MoveDirection.Up
+        }
+    }
+
     data class TouchInfo(
         val xTouch: Float,
         val yTouch: Float,
-        val direction: Direction
+        val moveDirection: MoveDirection
     )
-
-    enum class Direction {
-        Up,
-        Down,
-        Left,
-        Right;
-
-        companion object {
-            fun from(xDiff: Float, yDiff: Float): Direction {
-                return when (xDiff.absoluteValue > yDiff.absoluteValue) {
-                    true -> if (xDiff > 0) Right else Left
-                    false -> if (yDiff > 0) Down else Up
-                }
-            }
-        }
-
-        fun opposite() = when(this) {
-            Up -> Down
-            Down -> Up
-            Left -> Right
-            Right -> Left
-        }
-    }
 }
