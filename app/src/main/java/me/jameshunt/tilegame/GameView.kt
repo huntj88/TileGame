@@ -66,7 +66,7 @@ class GameView @JvmOverloads constructor(
                         canvas = canvas,
                         screenContext = screenContext,
                         tick = tick,
-                        state = nextState.stepState
+                        stepState = nextState.stepState
                     )
                 }
             }
