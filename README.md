@@ -14,5 +14,8 @@ When a new commit is added to the master branch a github action for deploying to
 
 Building and testing also takes place when a pull request is opened
 
+# State Machine
+![StateMachine diagram for game state](statemachine.png)
+
 The custom view has a grid of falling tiles that will always fall down according to gravity (rotate/tilt phone).
 If more than 3 tiles of the same color are in a row, then remove the tiles
