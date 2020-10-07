@@ -28,8 +28,8 @@ class GameView @JvmOverloads constructor(
     }
 
     private var state = State(
-        invisibleTiles = getInitialBoard(numTilesSize),
         tiles = getInitialBoard(numTilesSize),
+        invisibleTiles = getInitialBoard(numTilesSize),
         stepState = CheckForFallableTiles
     )
 

@@ -8,11 +8,11 @@ class StateTest {
     @Test
     fun checkGoToWaitForInputIfNoMoves() {
         val state1 = State(
-            invisibleTiles = listOf(
+            tiles = listOf(
                 listOf(Tile(TileType.One), Tile(TileType.One)),
                 listOf(Tile(TileType.One), Tile(TileType.One))
             ),
-            tiles = listOf(
+            invisibleTiles = listOf(
                 listOf(Tile(TileType.One), Tile(TileType.One)),
                 listOf(Tile(TileType.One), Tile(TileType.One))
             ),
@@ -31,12 +31,12 @@ class StateTest {
     @Test
     fun fallTwoTileTest() {
         val state1 = State(
-            invisibleTiles = listOf(
-                listOf(Tile(TileType.One), Tile(TileType.One)),
-                listOf(Tile(TileType.One), Tile(TileType.One))
-            ),
             tiles = listOf(
                 listOf(null, null),
+                listOf(Tile(TileType.One), Tile(TileType.One))
+            ),
+            invisibleTiles = listOf(
+                listOf(Tile(TileType.One), Tile(TileType.One)),
                 listOf(Tile(TileType.One), Tile(TileType.One))
             ),
             stepState = GameState.CheckForFallableTiles
@@ -57,13 +57,12 @@ class StateTest {
     @Test
     fun checkMatches() {
         val state1 = State(
-            invisibleTiles = emptyList(),
             tiles = listOf(
                 listOf(Tile(TileType.One), Tile(TileType.One), Tile(TileType.One)),
                 listOf(Tile(TileType.One), Tile(TileType.Two), Tile(TileType.Three)),
                 listOf(Tile(TileType.One), Tile(TileType.Three), Tile(TileType.Two))
             ),
-            tick = 0,
+            invisibleTiles = emptyList(),
             stepState = GameState.CheckForFallableTiles
         )
 

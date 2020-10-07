@@ -45,8 +45,8 @@ sealed class GameState {
 }
 
 data class State(
-    val invisibleTiles: List<List<Tile?>>,
     val tiles: List<List<Tile?>>,
+    val invisibleTiles: List<List<Tile?>>,
     val stepState: GameState,
     private val tick: Int = 0
 ) {
@@ -160,10 +160,10 @@ data class State(
                     }
 
                 return@onAnimationCompleted this.copy(
-                    invisibleTiles = joinedGridShift.map { it.subList(0, numTilesSize) },
                     tiles = joinedGridShift
                         .map { it.subList(numTilesSize, numTilesSize * 2) }
                         .fixTilesByGravity(directionToFallFrom),
+                    invisibleTiles = joinedGridShift.map { it.subList(0, numTilesSize) },
                     stepState = GameState.CheckForFallableTiles
                 )
 
