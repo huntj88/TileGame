@@ -28,11 +28,9 @@ class GameView @JvmOverloads constructor(
     }
 
     private var state = State(
-        numTilesSize = numTilesSize,
         invisibleTiles = getInitialBoard(numTilesSize),
         tiles = getInitialBoard(numTilesSize),
-        stepState = CheckForFallableTiles,
-        tick = 0
+        stepState = CheckForFallableTiles
     )
 
     // will be instantiated after view is measured.

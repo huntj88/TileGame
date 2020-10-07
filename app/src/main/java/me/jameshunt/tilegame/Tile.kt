@@ -32,7 +32,7 @@ enum class TileType {
         }
 }
 
-data class Tile(val type: TileType) {
+class Tile(val type: TileType) {
     fun render(
         x: TileXCoord,
         y: TileYCoord,
@@ -180,7 +180,7 @@ data class Tile(val type: TileType) {
 fun State.renderNewlyVisibleTiles(canvas: Canvas, screenContext: ScreenContext, tick: Int) {
     if (stepState !is GameState.TilesFalling) return
 
-    val fixTilesByGravity = tiles.fixTilesByGravity(directionToFallFrom!!)
+    val fixTilesByGravity = tiles.fixTilesByGravity(directionToFallFrom)
     (0 until GameView.numTilesSize).forEach { i ->
         if (null in fixTilesByGravity[i]) {
             invisibleTiles[i]
