@@ -40,7 +40,7 @@ sealed class GameState {
         }
 }
 
-class State {
+class State(private val numTilesSize: Int) {
     var invisibleTiles: List<List<Tile?>> = getInitialBoard()
     var tiles: List<List<Tile?>> = getInitialBoard()
     var currentState: GameState = GameState.CheckForFallableTiles
@@ -53,8 +53,8 @@ class State {
         }
 
     private fun getInitialBoard(): List<List<Tile?>> {
-        return (0 until GameView.numTilesSize).map { x ->
-            (0 until GameView.numTilesSize).map { y ->
+        return (0 until numTilesSize).map { x ->
+            (0 until numTilesSize).map { y ->
                 //when(true) {
                 when ((y + x) % 3 == 0) {
                     true -> Tile(TileType.values().slice(0 until GameView.numTileTypes).random())
@@ -115,7 +115,7 @@ class State {
                         .indexOfLast { it != null }
                 }
                 val doneFalling = lowestPosYOfFallableTiles.foldIndexed(true) { index, acc, posY ->
-                    val indexOfBottomTile = GameView.numTilesSize - 1
+                    val indexOfBottomTile = numTilesSize - 1
                     acc && (posY == indexOfBottomTile || null !in gravityFixedTiles[index])
                 }
 
@@ -143,7 +143,7 @@ class State {
 
                     val tilesThatFell = newTopTile + this.subList(0, lowestFallableTile + 1)
 
-                    val indexOfBottomTile = (GameView.numTilesSize * 2) - 1
+                    val indexOfBottomTile = (numTilesSize * 2) - 1
 
                     val tilesThatDidNotFall = (lowestFallableTile + 2..indexOfBottomTile)
                         .map { this[it] }
@@ -155,14 +155,14 @@ class State {
                     .mapIndexed { index, list -> invisibleTiles[index] + list }
                     .mapIndexed { index, arrayOfTiles ->
                         val lowestFallableTile =
-                            state.lowestPosYOfFallableTiles[index] + GameView.numTilesSize
+                            state.lowestPosYOfFallableTiles[index] + numTilesSize
                         arrayOfTiles.shiftTilesInColumnDown(lowestFallableTile)
                     }
 
-                invisibleTiles = joinedGridShift.map { it.subList(0, GameView.numTilesSize) }
+                invisibleTiles = joinedGridShift.map { it.subList(0, numTilesSize) }
 
                 tiles = joinedGridShift
-                    .map { it.subList(GameView.numTilesSize, GameView.numTilesSize * 2) }
+                    .map { it.subList(numTilesSize, numTilesSize * 2) }
                     .fixTilesByGravity(directionToFallFrom)
 
                 currentState = GameState.CheckForFallableTiles
@@ -256,6 +256,8 @@ class State {
                 currentState = GameState.CheckForFallableTiles
             }
         }
+
+        tick += 1
     }
 }
 

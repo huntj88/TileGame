@@ -27,7 +27,7 @@ class GameView @JvmOverloads constructor(
         handleTouchEvents()
     }
 
-    private val state = State()
+    private val state = State(numTilesSize)
 
     // will be instantiated after view is measured.
     private val screenContext by lazy {
@@ -62,8 +62,6 @@ class GameView @JvmOverloads constructor(
         }
 
         drawEdgesOfBoard(canvas, screenContext)
-
-        state.tick += 1
 
         invalidate()
     }
