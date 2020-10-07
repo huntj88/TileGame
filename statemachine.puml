@@ -1,0 +1,21 @@
+@startuml
+
+[*] -> CheckForFallableTiles
+WaitForInput --> InputDetected
+WaitForInput --> WaitForInput
+InputDetected -> CheckForPoints
+CheckForPoints --> WaitForInput
+CheckForPoints -> RemovingTiles
+RemovingTiles --> CheckForFallableTiles
+CheckForFallableTiles -> CheckForPoints
+CheckForFallableTiles -> TilesFalling
+TilesFalling --> CheckForFallableTiles
+
+
+'also part of the state machine, but not included to simplify rendering.
+'used for switching back when no match found after sliding a tile
+
+'InputDetected --> WaitForInput
+'CheckForPoints --> InputDetected
+
+@enduml

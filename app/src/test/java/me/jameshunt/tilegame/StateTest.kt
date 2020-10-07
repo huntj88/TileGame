@@ -1,6 +1,9 @@
 package me.jameshunt.tilegame
 
-import org.junit.Assert.*
+import me.jameshunt.tilegame.input.ExternalInput
+import me.jameshunt.tilegame.input.FallFromDirection
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StateTest {
@@ -16,15 +19,16 @@ class StateTest {
                 listOf(Tile(TileType.One), Tile(TileType.One)),
                 listOf(Tile(TileType.One), Tile(TileType.One))
             ),
-            stepState = GameState.CheckForFallableTiles
+            step = Step.CheckForFallableTiles,
+            externalInput = ExternalInput()
         )
 
         state1
-            .updateBoard { nextState, tick ->
-                assertTrue(nextState.stepState is GameState.CheckForPoints)
+            .updateBoard { nextState, _ ->
+                assertTrue(nextState.step is Step.CheckForPoints)
             }
-            .updateBoard { nextState, tick ->
-                assertTrue(nextState.stepState is GameState.WaitForInput)
+            .updateBoard { nextState, _ ->
+                assertTrue(nextState.step is Step.WaitForInput)
             }
     }
 
@@ -39,17 +43,18 @@ class StateTest {
                 listOf(Tile(TileType.One), Tile(TileType.One)),
                 listOf(Tile(TileType.One), Tile(TileType.One))
             ),
-            stepState = GameState.CheckForFallableTiles
+            step = Step.CheckForFallableTiles,
+            externalInput = ExternalInput()
         )
 
         state1
             .assertShouldFallThenMoveBackToCheck()
             .assertShouldFallThenMoveBackToCheck()
-            .updateBoard { nextState, tick ->
-                assertTrue(nextState.stepState is GameState.CheckForPoints)
+            .updateBoard { nextState, _ ->
+                assertTrue(nextState.step is Step.CheckForPoints)
             }
-            .updateBoard { nextState, tick ->
-                assertTrue(nextState.stepState is GameState.WaitForInput)
+            .updateBoard { nextState, _ ->
+                assertTrue(nextState.step is Step.WaitForInput)
             }
     }
 
@@ -63,21 +68,22 @@ class StateTest {
                 listOf(Tile(TileType.One), Tile(TileType.Three), Tile(TileType.Two))
             ),
             invisibleTiles = emptyList(),
-            stepState = GameState.CheckForFallableTiles
+            step = Step.CheckForFallableTiles,
+            externalInput = ExternalInput()
         )
 
         val state2 = state1
-            .updateBoard { nextState, tick ->
-                assertTrue(nextState.stepState is GameState.CheckForPoints)
+            .updateBoard { nextState, _ ->
+                assertTrue(nextState.step is Step.CheckForPoints)
             }
-            .updateBoard { nextState, tick ->
-                assertTrue(nextState.stepState is GameState.RemovingTiles)
+            .updateBoard { nextState, _ ->
+                assertTrue(nextState.step is Step.RemovingTiles)
             }
 
 
         // all ones are removed. two ways of 3 in a row
 
-        (state2.stepState as GameState.RemovingTiles).newBoardAfterRemove.let { newBoard ->
+        (state2.step as Step.RemovingTiles).newBoardAfterRemove.let { newBoard ->
             newBoard.first().forEach { assertTrue(it == null) }
             assertTrue(newBoard[1][0] == null)
             assertTrue(newBoard[2][0] == null)
@@ -85,21 +91,21 @@ class StateTest {
     }
 
     private fun State.assertShouldFallThenMoveBackToCheck(): State {
-        val fallingTickDuration = GameState
-            .TilesFalling(0, emptyList(), GravitySensor.TileFromDirection.Top)
+        val fallingTickDuration = Step
+            .TilesFalling(0, emptyList(), FallFromDirection.Top)
             .tickDuration
 
-        assertEquals(GameState.CheckForFallableTiles, stepState)
+        assertEquals(Step.CheckForFallableTiles, step)
 
 
-        val newState = (0 until fallingTickDuration).fold(this) { acc, next ->
-            acc.updateBoard { nextState, tick ->
-                assertTrue(nextState.stepState is GameState.TilesFalling)
+        val newState = (0 until fallingTickDuration).fold(this) { acc, _ ->
+            acc.updateBoard { nextState, _ ->
+                assertTrue(nextState.step is Step.TilesFalling)
             }
         }
 
-        return newState.updateBoard { nextState, tick ->
-            assertEquals(GameState.CheckForFallableTiles, nextState.stepState)
+        return newState.updateBoard { nextState, _ ->
+            assertEquals(Step.CheckForFallableTiles, nextState.step)
             println("fell one tile")
         }
     }
