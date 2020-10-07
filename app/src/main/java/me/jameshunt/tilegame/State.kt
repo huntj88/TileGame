@@ -96,11 +96,12 @@ data class State(
     }
 
     private fun handleWaitForInput(): State {
-        return lastInput?.let { input ->
-            this
+        return when(val input = lastInput) {
+            null -> this
+            else -> this
                 .apply { lastInput = null }
                 .copy(stepState = GameState.InputDetected(input, tick))
-        } ?: this
+        }
     }
 
     private fun handleInputDetected(stepState: GameState.InputDetected): State {
@@ -148,9 +149,9 @@ data class State(
             stepState = when (doneFalling) {
                 true -> GameState.CheckForPoints(null)
                 false -> GameState.TilesFalling(
-                    tick,
-                    lowestPosYOfFallableTiles,
-                    directionToFallFrom
+                    startTick = tick,
+                    lowestPosYOfFallableTiles = lowestPosYOfFallableTiles,
+                    fallingFromDirection = directionToFallFrom
                 )
             }
         )
