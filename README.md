@@ -1,3 +1,7 @@
+| <!-- -->    | <!-- -->    |
+-|-
+[![Actions Status](https://github.com/huntj88/TileGame/workflows/Deploy/badge.svg)](https://github.com/huntj88/TileGame/actions)  |  <a href="https://play.google.com/store/apps/details?id=me.jameshunt.tilegame"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/images/generic/en-play-badge.png" height=60px /></a>
+
 # App
 The custom view has a grid of falling tiles that will always fall down according to gravity (rotate/tilt phone).
 If more than 3 (adjustable) tiles of the same color are in a row, then remove the tiles
