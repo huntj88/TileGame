@@ -8,7 +8,7 @@ import java.util.concurrent.Executors
 class StateManager(
     numTilesSize: Int,
     externalInput: ExternalInput,
-    private val onRenderNewState: () -> Unit
+    private val onNewStateReadyForRender: () -> Unit
 ) {
     private var state: State = State(
         tiles = getInitialSparseBoard(numTilesSize),
@@ -29,21 +29,15 @@ class StateManager(
                 // but close enough
                 Thread.sleep(GameView.milliBetweenUpdate)
 
-                val nextState = state.getNextState()
+                val lastState = state
                 synchronized(this) {
-                    state = nextState
+                    state = state.getNextState()
                 }
 
-                nextState.notifyIfRenderable()
+                if (lastState.step != Step.WaitForInput || state.step != Step.WaitForInput) {
+                    onNewStateReadyForRender()
+                }
             }
-        }
-    }
-
-    private fun State.notifyIfRenderable() {
-        when (this.step) {
-            is Step.InputDetected,
-            is Step.RemovingTiles,
-            is Step.TilesFalling -> onRenderNewState()
         }
     }
 

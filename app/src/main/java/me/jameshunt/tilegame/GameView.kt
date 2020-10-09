@@ -54,7 +54,7 @@ class GameView @JvmOverloads constructor(
     private val stateManager = StateManager(
         numTilesSize = numTilesSize,
         externalInput = externalInput,
-        onRenderNewState = { invalidate() }
+        onNewStateReadyForRender = { invalidate() }
     )
 
     override fun onDraw(canvas: Canvas) {
