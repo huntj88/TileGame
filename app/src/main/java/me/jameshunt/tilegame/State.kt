@@ -3,6 +3,52 @@ package me.jameshunt.tilegame
 import me.jameshunt.tilegame.input.ExternalInput
 import me.jameshunt.tilegame.input.FallFromDirection
 import me.jameshunt.tilegame.input.TouchInput
+import java.util.concurrent.Executors
+
+class StateManager(
+    numTilesSize: Int,
+    externalInput: ExternalInput,
+    private val onRenderNewState: () -> Unit
+) {
+    private var state: State = State(
+        tiles = getInitialSparseBoard(numTilesSize),
+        invisibleTiles = getInitialSparseBoard(numTilesSize),
+        step = Step.CheckForFallableTiles,
+        externalInput = externalInput
+    )
+
+    init {
+        // By putting all of the magic in a background thread we can control
+        // the rate at which the state machine progresses
+        // UI thread also needs to do less work
+        Executors.newSingleThreadExecutor().submit {
+            // super basic state loop
+            while (true) {
+                // Simple delay between state updates
+                // may not be exactly how many milliseconds specified due to OS thread scheduling,
+                // but close enough
+                Thread.sleep(GameView.milliBetweenUpdate)
+
+                val nextState = state.getNextState()
+                synchronized(this) {
+                    state = nextState
+                }
+
+                nextState.notifyIfRenderable()
+            }
+        }
+    }
+
+    private fun State.notifyIfRenderable() {
+        when (this.step) {
+            is Step.InputDetected,
+            is Step.RemovingTiles,
+            is Step.TilesFalling -> onRenderNewState()
+        }
+    }
+
+    fun getCurrentState(): State = synchronized(this) { state }
+}
 
 typealias TileXCoordinate = Int
 typealias TileYCoordinate = Int
@@ -47,18 +93,16 @@ data class State(
     val tiles: List<List<Tile?>>,
     val invisibleTiles: List<List<Tile?>>,
     val step: Step,
-    private val externalInput: ExternalInput,
-    private val tick: Int = 0
+    val tick: Int = 0,
+    private val externalInput: ExternalInput
 ) {
     private val numTilesSize = tiles.size
 
     val directionToFallFrom: FallFromDirection
         get() = externalInput.directionToFallFrom
 
-    fun updateBoard(render: (nextState: State, tick: Int) -> Unit): State {
-        val nextState = stepThroughStateMachine().copy(tick = tick + 1)
-        render(nextState, tick)
-        return nextState
+    fun getNextState(): State {
+        return this.copy(tick = tick + 1).stepThroughStateMachine()
     }
 
     /**

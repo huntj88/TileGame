@@ -24,12 +24,8 @@ class StateTest {
         )
 
         state1
-            .updateBoard { nextState, _ ->
-                assertTrue(nextState.step is Step.CheckForPoints)
-            }
-            .updateBoard { nextState, _ ->
-                assertTrue(nextState.step is Step.WaitForInput)
-            }
+            .getNextState().also { assertTrue(it.step is Step.CheckForPoints) }
+            .getNextState().also { assertTrue(it.step is Step.WaitForInput) }
     }
 
     @Test
@@ -50,12 +46,8 @@ class StateTest {
         state1
             .assertShouldFallThenMoveBackToCheck()
             .assertShouldFallThenMoveBackToCheck()
-            .updateBoard { nextState, _ ->
-                assertTrue(nextState.step is Step.CheckForPoints)
-            }
-            .updateBoard { nextState, _ ->
-                assertTrue(nextState.step is Step.WaitForInput)
-            }
+            .getNextState().also { assertTrue(it.step is Step.CheckForPoints) }
+            .getNextState().also { assertTrue(it.step is Step.WaitForInput) }
     }
 
     //
@@ -73,12 +65,8 @@ class StateTest {
         )
 
         val state2 = state1
-            .updateBoard { nextState, _ ->
-                assertTrue(nextState.step is Step.CheckForPoints)
-            }
-            .updateBoard { nextState, _ ->
-                assertTrue(nextState.step is Step.RemovingTiles)
-            }
+            .getNextState().also { assertTrue(it.step is Step.CheckForPoints) }
+            .getNextState().also { assertTrue(it.step is Step.RemovingTiles) }
 
 
         // all ones are removed. two ways of 3 in a row
@@ -99,13 +87,11 @@ class StateTest {
 
 
         val newState = (0 until fallingTickDuration).fold(this) { acc, _ ->
-            acc.updateBoard { nextState, _ ->
-                assertTrue(nextState.step is Step.TilesFalling)
-            }
+            acc.getNextState().also { assertTrue(it.step is Step.TilesFalling) }
         }
 
-        return newState.updateBoard { nextState, _ ->
-            assertEquals(Step.CheckForFallableTiles, nextState.step)
+        return newState.getNextState().also {
+            assertEquals(Step.CheckForFallableTiles, it.step)
             println("fell one tile")
         }
     }
