@@ -21,6 +21,7 @@ class GameView @JvmOverloads constructor(
         const val numTilesSize = 8
         const val numTileTypes = 3 // max of 6 at the moment, add more in TileType
         const val numToMatch = 3
+        const val milliBetweenUpdate = 16L
     }
 
     init {
@@ -50,33 +51,29 @@ class GameView @JvmOverloads constructor(
     private val tileRenderer = TileRenderer()
     private val externalInput = ExternalInput()
 
-    private var state = State(
-        tiles = getInitialSparseBoard(numTilesSize),
-        invisibleTiles = getInitialSparseBoard(numTilesSize),
-        step = CheckForFallableTiles,
-        externalInput = externalInput
+    private val stateManager = StateManager(
+        numTilesSize = numTilesSize,
+        externalInput = externalInput,
+        onRenderNewState = { invalidate() }
     )
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        // set current state to next state after update
-        state = state.updateBoard { nextState, tick ->
-            nextState.renderTileGrid(tileRenderer, canvas, screenContext, tick)
+        stateManager.getCurrentState().let { state ->
+            state.renderTileGrid(tileRenderer, canvas, screenContext, state.tick)
         }
 
         drawEdgesOfBoard(canvas, screenContext)
-
-        invalidate()
     }
 
-    fun setDirectionToFallFrom(directionToFallFrom: FallFromDirection) {
-        externalInput.setDirectionToFallFrom(state.step, directionToFallFrom)
+    fun setDirectionToFallFrom(direction: FallFromDirection) {
+        externalInput.setDirectionToFallFrom(stateManager.getCurrentState().step, direction)
     }
 
     private fun handleTouchEvents() {
         setOnTouchListener(OnInputTouchListener { touchInfo ->
-            if (state.step != WaitForInput) return@OnInputTouchListener
+            if (stateManager.getCurrentState().step != WaitForInput) return@OnInputTouchListener
 
             val xTouchInGrid = touchInfo.xTouch - screenContext.gridStartX
             val xTile = floor(xTouchInGrid / screenContext.gridSize * numTilesSize).toInt()
