@@ -24,17 +24,17 @@ class StateManager(
         Executors.newSingleThreadExecutor().submit {
             // super basic state loop
             while (true) {
-                // Simple delay between state updates
-                // may not be exactly how many milliseconds specified due to OS thread scheduling,
-                // but close enough
-                Thread.sleep(GameView.milliBetweenUpdate)
-
-                val lastState = state
-                synchronized(this) {
-                    state = state.getNextState()
+                if (state.tick % GameView.sleepEveryXTicks == 0) {
+                    Thread.sleep(GameView.milliToSleepFor)
                 }
 
-                if (lastState.step != Step.WaitForInput || state.step != Step.WaitForInput) {
+                val lastState = state
+                val nextState = lastState.getNextState()
+                synchronized(this) {
+                    state = nextState
+                }
+
+                if (lastState.step != Step.WaitForInput || nextState.step != Step.WaitForInput) {
                     onNewStateReadyForRender()
                 }
             }

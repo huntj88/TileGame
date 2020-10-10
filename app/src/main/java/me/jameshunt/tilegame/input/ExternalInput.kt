@@ -51,7 +51,7 @@ enum class MoveDirection {
     Left,
     Right;
 
-    fun opposite() = when(this) {
+    fun opposite(): MoveDirection = when (this) {
         Up -> Down
         Down -> Up
         Left -> Right
