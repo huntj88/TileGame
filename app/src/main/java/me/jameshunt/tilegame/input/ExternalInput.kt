@@ -1,5 +1,6 @@
 package me.jameshunt.tilegame.input
 
+import me.jameshunt.tilegame.GameView
 import me.jameshunt.tilegame.Step
 import me.jameshunt.tilegame.TileXCoordinate
 import me.jameshunt.tilegame.TileYCoordinate
@@ -9,6 +10,7 @@ import me.jameshunt.tilegame.TileYCoordinate
  */
 class ExternalInput {
     var lastTouchInput: TouchInput? = null
+    var config: GameView.Config = GameView.Config()
 
     // affected by gravity (rotate/tilt)
     var directionToFallFrom: FallFromDirection = FallFromDirection.Top

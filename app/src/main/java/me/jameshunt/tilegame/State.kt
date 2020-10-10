@@ -5,17 +5,12 @@ import me.jameshunt.tilegame.input.FallFromDirection
 import me.jameshunt.tilegame.input.TouchInput
 import java.util.concurrent.Executors
 
-class StateManager(
-    numTilesSize: Int,
-    externalInput: ExternalInput,
-    private val onNewStateReadyForRender: () -> Unit
+class StateMachine(
+    private val externalInput: ExternalInput,
+    private val onNewStateReadyForRender: () -> Unit,
+    private val onError: (e: Throwable) -> Unit
 ) {
-    private var state: State = State(
-        tiles = getInitialSparseBoard(numTilesSize),
-        invisibleTiles = getInitialSparseBoard(numTilesSize),
-        step = Step.CheckForFallableTiles,
-        externalInput = externalInput
-    )
+    private var state: State = getInitialState()
 
     init {
         // By putting all of the magic in a background thread we can control
@@ -24,12 +19,18 @@ class StateManager(
         Executors.newSingleThreadExecutor().submit {
             // super basic state loop
             while (true) {
-                if (state.tick % GameView.sleepEveryXTicks == 0) {
-                    Thread.sleep(GameView.milliToSleepFor)
+                if (state.tick % externalInput.config.sleepEveryXTicks == 0) {
+                    Thread.sleep(externalInput.config.milliToSleepFor)
                 }
 
                 val lastState = state
-                val nextState = lastState.getNextState()
+                val nextState = try {
+                    lastState.getNextState()
+                } catch (t: Throwable) {
+                    onError(t)
+                    return@submit
+                }
+
                 synchronized(this) {
                     state = nextState
                 }
@@ -42,6 +43,17 @@ class StateManager(
     }
 
     fun getCurrentState(): State = synchronized(this) { state }
+
+    private fun getInitialState(): State {
+        val gridSize = externalInput.config.gridSize
+        val numTileTypes = externalInput.config.numTileTypes
+        return State(
+            tiles = getInitialBoard(gridSize, numTileTypes),
+            invisibleTiles = getInitialBoard(gridSize, numTileTypes),
+            step = Step.CheckForFallableTiles,
+            externalInput = externalInput
+        )
+    }
 }
 
 typealias TileXCoordinate = Int
@@ -90,7 +102,8 @@ data class State(
     val tick: Int = 0,
     private val externalInput: ExternalInput
 ) {
-    private val numTilesSize = tiles.size
+    // get a non mutable reference to the config object at the time this state was created
+    val config: GameView.Config = externalInput.config
 
     val directionToFallFrom: FallFromDirection
         get() = externalInput.directionToFallFrom
@@ -172,7 +185,7 @@ data class State(
         }
 
         val doneFalling = lowestPosYOfFallableTiles.foldIndexed(true) { index, acc, posY ->
-            val indexOfBottomTile = numTilesSize - 1
+            val indexOfBottomTile = config.gridSize - 1
             acc && (posY == indexOfBottomTile || null !in gravityFixedTiles[index])
         }
 
@@ -196,15 +209,15 @@ data class State(
         fun List<Tile?>.shiftTilesInColumnDown(lowestFallableTile: TileYCoordinate): List<Tile?> {
             // represents a column of visible and invisible tiles combined,
             // with invisible ones being used to supply new tiles
-            check(this.size == numTilesSize * 2)
+            check(this.size == config.gridSize * 2)
 
             if (null !in this) return this
 
-            val newTopTile = listOf(newRandomTile()) as List<Tile?>
+            val newTopTile = listOf(newRandomTile(config.numTileTypes)) as List<Tile?>
 
             val tilesThatFell = newTopTile + this.subList(0, lowestFallableTile + 1)
 
-            val indexOfBottomTile = (numTilesSize * 2) - 1
+            val indexOfBottomTile = (config.gridSize * 2) - 1
 
             val tilesThatDidNotFall = (lowestFallableTile + 2..indexOfBottomTile).map { this[it] }
 
@@ -214,15 +227,15 @@ data class State(
         val joinedGridShift = tiles.fixTilesByGravity(directionToFallFrom)
             .mapIndexed { index, list -> invisibleTiles[index] + list }
             .mapIndexed { index, arrayOfTiles ->
-                val lowestFallableTile = stepState.lowestPosYOfFallableTiles[index] + numTilesSize
+                val lowestFallableTile = stepState.lowestPosYOfFallableTiles[index] + config.gridSize
                 arrayOfTiles.shiftTilesInColumnDown(lowestFallableTile)
             }
 
         return this.copy(
             tiles = joinedGridShift
-                .map { it.subList(numTilesSize, numTilesSize * 2) }
+                .map { it.subList(config.gridSize, config.gridSize * 2) }
                 .fixTilesByGravity(directionToFallFrom),
-            invisibleTiles = joinedGridShift.map { it.subList(0, numTilesSize) },
+            invisibleTiles = joinedGridShift.map { it.subList(0, config.gridSize) },
             step = Step.CheckForFallableTiles
         )
 
@@ -236,7 +249,7 @@ data class State(
             var matchSoFarSize = 0
 
             fun checkIfMatch() {
-                if (matchSoFarSize >= GameView.numToMatch) {
+                if (matchSoFarSize >= config.numToMatch) {
                     (indexOfStartMatching until indexOfStartMatching + matchSoFarSize).forEach {
                         tilesWithRemoved[it] = null
                     }

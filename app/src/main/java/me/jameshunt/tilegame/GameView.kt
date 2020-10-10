@@ -17,13 +17,13 @@ class GameView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
-    companion object {
-        const val gridSize = 8
-        const val numTileTypes = 3 // max of 6 at the moment, add more in TileType
-        const val numToMatch = 3
-        const val milliToSleepFor = 16L
-        const val sleepEveryXTicks = 1
-    }
+    data class Config(
+        val gridSize: Int = 13,
+        val numTileTypes: Int = 5 ,// max of 6 at the moment, add more in TileType
+        val numToMatch: Int = 2,
+        val milliToSleepFor: Long = 16L,
+        val sleepEveryXTicks: Int = 1
+    )
 
     init {
         setBackgroundColor(Color.GRAY)
@@ -33,54 +33,52 @@ class GameView @JvmOverloads constructor(
     // will be instantiated after view is measured.
     private val screenContext by lazy {
         check(height != 0 && width != 0)
+        val gridSizePixels = min(width, height)
 
-        val gridSize = min(width, height)
-
-        val gridStartX = when (width == gridSize) {
-            true -> 0
-            false -> (width - height) / 2
-        }
-
-        val gridStartY = when (height == gridSize) {
-            true -> 0
-            false -> (height - width) / 2
-        }
-
-        ScreenContext(gridSize, gridStartX, gridStartY)
+        ScreenContext(
+            gridSizePixels = gridSizePixels,
+            gridStartX = when (width == gridSizePixels) {
+                true -> 0
+                false -> (width - height) / 2
+            },
+            gridStartY = when (height == gridSizePixels) {
+                true -> 0
+                false -> (height - width) / 2
+            }
+        )
     }
 
     private val tileRenderer = TileRenderer()
     private val externalInput = ExternalInput()
 
-    private val stateManager = StateManager(
-        numTilesSize = gridSize,
+    private val stateMachine = StateMachine(
         externalInput = externalInput,
-        onNewStateReadyForRender = { invalidate() }
+        onNewStateReadyForRender = { invalidate() },
+        onError = { post { throw it } }
     )
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        stateManager.getCurrentState().let { state ->
-            state.renderTileGrid(tileRenderer, canvas, screenContext, state.tick)
-        }
+        stateMachine.getCurrentState().renderTileGrid(tileRenderer, canvas, screenContext)
 
         drawEdgesOfBoard(canvas, screenContext)
     }
 
     fun setDirectionToFallFrom(direction: FallFromDirection) {
-        externalInput.setDirectionToFallFrom(stateManager.getCurrentState().step, direction)
+        externalInput.setDirectionToFallFrom(stateMachine.getCurrentState().step, direction)
     }
 
     private fun handleTouchEvents() {
         setOnTouchListener(OnInputTouchListener { touchInfo ->
-            if (stateManager.getCurrentState().step != WaitForInput) return@OnInputTouchListener
+            if (stateMachine.getCurrentState().step != WaitForInput) return@OnInputTouchListener
 
             val xTouchInGrid = touchInfo.xTouch - screenContext.gridStartX
-            val xTile = floor(xTouchInGrid / screenContext.gridSize * gridSize).toInt()
+            val gridSize = externalInput.config.gridSize
+            val xTile = floor(xTouchInGrid / screenContext.gridSizePixels * gridSize).toInt()
 
             val yTouchInGrid = touchInfo.yTouch - screenContext.gridStartY
-            val yTile = floor(yTouchInGrid / screenContext.gridSize * gridSize).toInt()
+            val yTile = floor(yTouchInGrid / screenContext.gridSizePixels * gridSize).toInt()
 
             val touched = TouchInput.TileCoordinate(xTile, yTile)
             val switchWith = when (touchInfo.moveDirection) {
@@ -104,15 +102,15 @@ class GameView @JvmOverloads constructor(
         canvas.drawRect(
             screenContext.gridStartX.toFloat(),
             0f,
-            screenContext.gridStartX.toFloat() + screenContext.gridSize.toFloat(),
+            screenContext.gridStartX.toFloat() + screenContext.gridSizePixels.toFloat(),
             screenContext.gridStartY.toFloat(),
             edgeOfBoardColor
         )
 
         canvas.drawRect(
             screenContext.gridStartX.toFloat(),
-            screenContext.gridStartY.toFloat() + screenContext.gridSize.toFloat(),
-            screenContext.gridStartX.toFloat() + screenContext.gridSize.toFloat(),
+            screenContext.gridStartY.toFloat() + screenContext.gridSizePixels.toFloat(),
+            screenContext.gridStartX.toFloat() + screenContext.gridSizePixels.toFloat(),
             height.toFloat(),
             edgeOfBoardColor
         )
@@ -120,7 +118,7 @@ class GameView @JvmOverloads constructor(
 }
 
 data class ScreenContext(
-    val gridSize: Int,
+    val gridSizePixels: Int,
     val gridStartX: Int,
     val gridStartY: Int
 )
