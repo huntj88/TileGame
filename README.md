@@ -69,13 +69,15 @@ setup the board in a specific way. Testing is as easy as asserting the expected 
 after the state has been progressed a known number of times.
 
 # CI/CD setup
-When a new commit is added to the master branch a github action for deploying to Google Play is started.
-#### Releases
-To bump and tag a new version, include one of the following text snippets in a commit message. Highest priority wins
+#### Versioning - master branch only
+To bump and tag a new version, include one of the following text snippets in a commit message.
 - #major
 - #minor
 - #patch
 
+https://github.com/anothrNick/github-tag-action
+
+When a new commit is added to the master branch a github action for deploying to Google Play is started.
 #### Action Steps:
 1. Checkout master branch
 2. Build And run unit tests
