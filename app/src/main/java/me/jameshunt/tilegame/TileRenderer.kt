@@ -10,8 +10,8 @@ import kotlin.random.Random
 fun State.renderTileGrid(tileRenderer: TileRenderer, canvas: Canvas, screenContext: ScreenContext, tick: Int) {
     this.renderNewlyVisibleTiles(tileRenderer, canvas, screenContext, tick)
 
-    (0 until GameView.numTilesSize).forEach { x ->
-        (0 until GameView.numTilesSize).forEach { y ->
+    (0 until GameView.gridSize).forEach { x ->
+        (0 until GameView.gridSize).forEach { y ->
             this.tiles[x][y]?.type?.let { tileType ->
                 tileRenderer.render(
                     type = tileType,
@@ -36,7 +36,7 @@ private fun State.renderNewlyVisibleTiles(
     if (step !is Step.TilesFalling) return
 
     val fixTilesByGravity = tiles.fixTilesByGravity(directionToFallFrom)
-    (0 until GameView.numTilesSize).forEach { i ->
+    (0 until GameView.gridSize).forEach { i ->
         if (null in fixTilesByGravity[i]) {
             invisibleTiles[i].last()
                 ?.type
@@ -73,7 +73,7 @@ class TileRenderer {
         tick: Int,
         step: Step
     ) {
-        val tileSize = screenContext.gridSize / GameView.numTilesSize.toFloat()
+        val tileSize = screenContext.gridSize / GameView.gridSize.toFloat()
         val tileRadius = tileSize / 4f
 
         val fallingOffset = fallingOffset(x, y, tileSize, tick, step)
@@ -106,7 +106,7 @@ class TileRenderer {
     ) {
         check(step is Step.TilesFalling)
 
-        val numTilesSize = GameView.numTilesSize
+        val numTilesSize = GameView.gridSize
         val (x: TileXCoordinate, y: TileYCoordinate) = when (step.fallingFromDirection) {
             FallFromDirection.Top -> Pair(i, -1)
             FallFromDirection.Bottom -> Pair(i, numTilesSize)
@@ -135,13 +135,13 @@ class TileRenderer {
                     step.lowestPosYOfFallableTiles[y] >= x -> Offset(fallingYOffset, 0f)
             step.fallingFromDirection == FallFromDirection.Right -> {
                 val fixedLowest = step.lowestPosYOfFallableTiles.reversed()[y]
-                when (fixedLowest >= (GameView.numTilesSize - 1) - x) {
+                when (fixedLowest >= (GameView.gridSize - 1) - x) {
                     true -> Offset(-fallingYOffset, 0f)
                     false -> Offset(0f, 0f)
                 }
             }
             step.fallingFromDirection == FallFromDirection.Bottom -> {
-                when (step.lowestPosYOfFallableTiles[x] >= (GameView.numTilesSize - 1) - y) {
+                when (step.lowestPosYOfFallableTiles[x] >= (GameView.gridSize - 1) - y) {
                     true -> Offset(0f, -fallingYOffset)
                     false -> Offset(0f, 0f)
                 }

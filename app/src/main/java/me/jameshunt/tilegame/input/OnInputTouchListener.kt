@@ -24,7 +24,7 @@ class OnInputTouchListener(
                 val xDiff = event.x - startX
                 val yDiff = event.y - startY
 
-                val minMoveDistance = min(v.width, v.height) / (GameView.numTilesSize * 3f)
+                val minMoveDistance = min(v.width, v.height) / (GameView.gridSize * 3f)
                 if (max(xDiff.absoluteValue, yDiff.absoluteValue) > minMoveDistance) {
                     val direction = moveDirectionFrom(xDiff, yDiff)
                     inputDetectedHandler(TouchInfo(startX, startY, direction))

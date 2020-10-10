@@ -13,7 +13,13 @@ If more than 3 (adjustable) tiles of the same color are in a row, then remove th
 
 # Code
 Quick sliding tile experiment app to play around with some state machine concepts.
-Written using immutable data structures to hold game state
+The Game state itself is represented with immutable data structures.
+
+The keyword `val` and immutable data structures are preferred.
+
+Mutable data structures are only to be used in pure functions that do not manipulate outside state.
+The keyword `var` should also only be used in pure functions, except when representing external user input.
+
 
 # CI/CD setup
 When a new commit is added to the master branch a github action for deploying to Google Play is started.

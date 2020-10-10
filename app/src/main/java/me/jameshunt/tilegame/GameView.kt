@@ -18,10 +18,11 @@ class GameView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
     companion object {
-        const val numTilesSize = 8
+        const val gridSize = 8
         const val numTileTypes = 3 // max of 6 at the moment, add more in TileType
         const val numToMatch = 3
-        const val milliBetweenUpdate = 16L
+        const val milliToSleepFor = 16L
+        const val sleepEveryXTicks = 1
     }
 
     init {
@@ -52,7 +53,7 @@ class GameView @JvmOverloads constructor(
     private val externalInput = ExternalInput()
 
     private val stateManager = StateManager(
-        numTilesSize = numTilesSize,
+        numTilesSize = gridSize,
         externalInput = externalInput,
         onNewStateReadyForRender = { invalidate() }
     )
@@ -76,10 +77,10 @@ class GameView @JvmOverloads constructor(
             if (stateManager.getCurrentState().step != WaitForInput) return@OnInputTouchListener
 
             val xTouchInGrid = touchInfo.xTouch - screenContext.gridStartX
-            val xTile = floor(xTouchInGrid / screenContext.gridSize * numTilesSize).toInt()
+            val xTile = floor(xTouchInGrid / screenContext.gridSize * gridSize).toInt()
 
             val yTouchInGrid = touchInfo.yTouch - screenContext.gridStartY
-            val yTile = floor(yTouchInGrid / screenContext.gridSize * numTilesSize).toInt()
+            val yTile = floor(yTouchInGrid / screenContext.gridSize * gridSize).toInt()
 
             val touched = TouchInput.TileCoordinate(xTile, yTile)
             val switchWith = when (touchInfo.moveDirection) {
@@ -89,8 +90,8 @@ class GameView @JvmOverloads constructor(
                 MoveDirection.Right -> TouchInput.TileCoordinate(xTile + 1, yTile)
             }
 
-            val validXMove = switchWith.x in (0 until numTilesSize)
-            val validYMove = switchWith.y in (0 until numTilesSize)
+            val validXMove = switchWith.x in (0 until gridSize)
+            val validYMove = switchWith.y in (0 until gridSize)
 
             if (validXMove && validYMove) {
                 externalInput.lastTouchInput = TouchInput(touched, switchWith, touchInfo.moveDirection)
