@@ -52,7 +52,7 @@ class StateMachine(
         val currentConfig = externalInput.config
 
         fun Step.TilesFalling.handleTilesFallingConfigChange(): Step {
-            // falling state data could be stale due to different board size
+            // falling state data could be stale due to different tile grid size
             return when (currentConfig.gridSize == this.lowestPosYOfFallableTiles.size) {
                 true -> this
                 false -> Step.CheckForFallableTiles

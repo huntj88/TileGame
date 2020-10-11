@@ -39,8 +39,9 @@ fun List<List<Tile?>>.transpose2DTileList(): List<List<Tile?>> {
     return new
 }
 
-// TODO: optimize
 fun List<List<Tile?>>.shrinkOrGrow(newGridSize: Int): List<List<Tile?>> {
+    if (this.size == newGridSize) return this
+
     return (0 until newGridSize).map { x ->
         val column = getOrNull(x)
         (0 until newGridSize).map { y ->
@@ -50,6 +51,8 @@ fun List<List<Tile?>>.shrinkOrGrow(newGridSize: Int): List<List<Tile?>> {
 }
 
 fun List<List<Tile?>>.shrinkOrGrowFilled(newGridSize: Int, numTileTypes: Int): List<List<Tile?>> {
+    if (this.size == newGridSize) return this
+
     return (0 until newGridSize).map { x ->
         val column = getOrNull(x)
         (0 until newGridSize).map { y ->
