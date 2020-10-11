@@ -1,5 +1,6 @@
 package me.jameshunt.tilegame.input
 
+import me.jameshunt.tilegame.GameView
 import me.jameshunt.tilegame.Step
 import me.jameshunt.tilegame.TileXCoordinate
 import me.jameshunt.tilegame.TileYCoordinate
@@ -7,15 +8,15 @@ import me.jameshunt.tilegame.TileYCoordinate
 /**
  * The only mutable state I actually need, because its external user input
  */
-class ExternalInput {
+class ExternalInput(var config: GameView.Config = GameView.Config()) {
     var lastTouchInput: TouchInput? = null
 
     // affected by gravity (rotate/tilt)
     var directionToFallFrom: FallFromDirection = FallFromDirection.Top
         private set
 
-    fun setDirectionToFallFrom(stepState: Step, directionToFallFrom: FallFromDirection) {
-        if (stepState !is Step.TilesFalling) {
+    fun setDirectionToFallFrom(step: Step, directionToFallFrom: FallFromDirection) {
+        if (step !is Step.TilesFalling) {
             this.directionToFallFrom = directionToFallFrom
         }
     }

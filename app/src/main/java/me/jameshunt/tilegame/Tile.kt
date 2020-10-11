@@ -9,21 +9,18 @@ enum class TileType {
     Six
 }
 
-class Tile(val type: TileType)
+data class Tile(val type: TileType)
 
-fun newRandomTile(): Tile = Tile(
+fun newRandomTile(numTileTypes: Int): Tile = Tile(
     type = TileType.values()
-        .slice(0 until GameView.numTileTypes)
+        .slice(0 until numTileTypes)
         .random()
 )
 
-fun getInitialSparseBoard(numTilesSize: Int): List<List<Tile?>> {
-    return (0 until numTilesSize).map { x ->
-        (0 until numTilesSize).map { y ->
-            when ((y + x) % 3 == 0) {
-                true -> newRandomTile()
-                false -> null
-            }
+fun getInitialBoard(gridSize: Int, numTileTypes: Int): List<List<Tile?>> {
+    return (0 until gridSize).map { x ->
+        (0 until gridSize).map { y ->
+            newRandomTile(numTileTypes)
         }
     }
 }
@@ -40,4 +37,27 @@ fun List<List<Tile?>>.transpose2DTileList(): List<List<Tile?>> {
     }
 
     return new
+}
+
+fun List<List<Tile?>>.shrinkOrGrow(newGridSize: Int): List<List<Tile?>> {
+    if (this.size == newGridSize) return this
+
+    return (0 until newGridSize).map { x ->
+        val column = getOrNull(x)
+        (0 until newGridSize).map { y ->
+            column?.getOrNull(y)
+        }
+    }
+}
+
+fun List<List<Tile?>>.shrinkOrGrowFilled(newGridSize: Int, numTileTypes: Int): List<List<Tile?>> {
+    if (this.size == newGridSize) return this
+
+    return (0 until newGridSize).map { x ->
+        val column = getOrNull(x)
+        (0 until newGridSize).map { y ->
+            val existingTile = column?.getOrNull(y)
+            existingTile ?: newRandomTile(numTileTypes)
+        }
+    }
 }
