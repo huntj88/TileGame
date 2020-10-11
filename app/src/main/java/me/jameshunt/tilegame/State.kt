@@ -184,9 +184,8 @@ data class State(
     private fun handleInputDetected(step: Step.InputDetected): State {
         val input = step.touchInput
 
-        // TODO: handle case where tiles shrank to be smaller than selected x and y
-        val touchedTile = tiles[input.touched.x][input.touched.y]
-        val switchWithTile = tiles[input.switchWith.x][input.switchWith.y]
+        val touchedTile = tiles.getOrNull(input.touched.x)?.getOrNull(input.touched.y)
+        val switchWithTile = tiles.getOrNull(input.switchWith.x)?.getOrNull(input.switchWith.y)
 
         return this.copy(
             tiles = tiles.map { column ->

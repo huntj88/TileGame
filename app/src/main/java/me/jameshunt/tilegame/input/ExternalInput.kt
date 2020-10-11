@@ -8,9 +8,8 @@ import me.jameshunt.tilegame.TileYCoordinate
 /**
  * The only mutable state I actually need, because its external user input
  */
-class ExternalInput {
+class ExternalInput(var config: GameView.Config = GameView.Config()) {
     var lastTouchInput: TouchInput? = null
-    var config: GameView.Config = GameView.Config()
 
     // affected by gravity (rotate/tilt)
     var directionToFallFrom: FallFromDirection = FallFromDirection.Top

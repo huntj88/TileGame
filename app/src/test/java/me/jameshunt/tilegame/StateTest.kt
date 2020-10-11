@@ -10,6 +10,7 @@ class StateTest {
 
     @Test
     fun checkGoToWaitForInputIfNoMoves() {
+        val ex = ExternalInput(GameView.Config(gridSize = 2, numToMatch = 3))
         val state1 = State(
             tiles = listOf(
                 listOf(Tile(TileType.One), Tile(TileType.One)),
@@ -20,7 +21,8 @@ class StateTest {
                 listOf(Tile(TileType.One), Tile(TileType.One))
             ),
             step = Step.CheckForFallableTiles,
-            externalInput = ExternalInput()
+            externalInput = ex,
+            config = ex.config
         )
 
         state1
@@ -30,6 +32,7 @@ class StateTest {
 
     @Test
     fun fallTwoTileTest() {
+        val ex = ExternalInput(GameView.Config(gridSize = 2, numToMatch = 3))
         val state1 = State(
             tiles = listOf(
                 listOf(null, null),
@@ -40,19 +43,23 @@ class StateTest {
                 listOf(Tile(TileType.One), Tile(TileType.One))
             ),
             step = Step.CheckForFallableTiles,
-            externalInput = ExternalInput()
+            externalInput = ex,
+            config = ex.config
         )
 
         state1
             .assertShouldFallThenMoveBackToCheck()
             .assertShouldFallThenMoveBackToCheck()
             .getNextState().also { assertTrue(it.step is Step.CheckForPoints) }
-            .getNextState().also { assertTrue(it.step is Step.WaitForInput) }
+            .getNextState().also {
+                assertTrue(it.step is Step.WaitForInput)
+            }
     }
 
     //
     @Test
     fun checkMatches() {
+        val ex = ExternalInput(GameView.Config(gridSize = 3))
         val state1 = State(
             tiles = listOf(
                 listOf(Tile(TileType.One), Tile(TileType.One), Tile(TileType.One)),
@@ -61,7 +68,8 @@ class StateTest {
             ),
             invisibleTiles = emptyList(),
             step = Step.CheckForFallableTiles,
-            externalInput = ExternalInput()
+            externalInput = ex,
+            config = ex.config
         )
 
         val state2 = state1
