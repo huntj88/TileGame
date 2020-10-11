@@ -9,6 +9,7 @@ import android.view.View
 import me.jameshunt.tilegame.Step.*
 import me.jameshunt.tilegame.input.*
 import kotlin.math.floor
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
 
@@ -71,6 +72,15 @@ class GameView @JvmOverloads constructor(
         if(Random.nextInt() % 5 == 0) {
             val gridSize = externalInput.config.gridSize
             externalInput.config = externalInput.config.copy(gridSize = gridSize + (Random.nextInt() % 2))
+        }
+
+        if(Random.nextInt() % 400 == 0) {
+            val everyXTicks = externalInput.config.sleepEveryXTicks
+            val milli = externalInput.config.milliToSleepFor
+            externalInput.config = externalInput.config.copy(
+                sleepEveryXTicks = everyXTicks + 1,
+                milliToSleepFor = max(1, milli - 1)
+            )
         }
     }
 
