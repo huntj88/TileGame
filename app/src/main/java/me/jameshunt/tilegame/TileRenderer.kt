@@ -17,7 +17,7 @@ fun State.renderTileGrid(
     val gridSize = config.gridSize
     (0 until gridSize).forEach { x ->
         (0 until gridSize).forEach { y ->
-            this.tiles[x][y]?.type?.let { tileType ->
+            tiles.getOrNull(x)?.getOrNull(y)?.type?.let { tileType ->
                 tileRenderer.render(
                     type = tileType,
                     x = x,
@@ -175,7 +175,7 @@ class TileRenderer {
         return (step as? Step.RemovingTiles)?.let {
             val sizeShrinkPerTick = tileSize / 2 / step.tickDuration
 
-            when (it.newBoardAfterRemove[x][y] == null) {
+            when (it.newBoardAfterRemove.getOrNull(x)?.getOrNull(y) == null) {
                 true -> (tileSize / 14) + tileSize - (sizeShrinkPerTick * ((tick - step.startTick) % step.tickDuration))
                 false -> 6f
             }

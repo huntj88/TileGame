@@ -25,7 +25,9 @@ class StateMachine(
 
                 val lastState = state
                 val nextState = try {
-                    lastState.getNextState()
+                    lastState
+                        .loadConfigChange()
+                        .getNextState()
                 } catch (t: Throwable) {
                     onError(t)
                     return@submit
@@ -44,6 +46,36 @@ class StateMachine(
 
     fun getCurrentState(): State = synchronized(this) { state }
 
+    private fun State.loadConfigChange(): State {
+        if (this.step is Step.CheckForPoints) {
+            // defer loading config until after match evaluation
+            return this
+        }
+
+        val currentConfig = externalInput.config
+
+        fun Step.TilesFalling.handleTilesFallingConfigChange(): Step {
+            // falling state data could be stale due to different board size
+            return when (currentConfig.gridSize == this.lowestPosYOfFallableTiles.size) {
+                true -> this
+                false -> Step.CheckForFallableTiles
+            }
+        }
+
+        return this.copy(
+            config = currentConfig,
+            tiles = this.tiles.shrinkOrGrow(currentConfig.gridSize),
+            invisibleTiles = this.invisibleTiles.shrinkOrGrowFilled(
+                currentConfig.gridSize,
+                currentConfig.numTileTypes
+            ),
+            step = when (step) {
+                is Step.TilesFalling -> step.handleTilesFallingConfigChange()
+                else -> step
+            }
+        )
+    }
+
     private fun getInitialState(): State {
         val gridSize = externalInput.config.gridSize
         val numTileTypes = externalInput.config.numTileTypes
@@ -51,7 +83,8 @@ class StateMachine(
             tiles = getInitialBoard(gridSize, numTileTypes),
             invisibleTiles = getInitialBoard(gridSize, numTileTypes),
             step = Step.CheckForFallableTiles,
-            externalInput = externalInput
+            externalInput = externalInput,
+            config = externalInput.config
         )
     }
 }
@@ -100,16 +133,16 @@ data class State(
     val invisibleTiles: List<List<Tile?>>,
     val step: Step,
     val tick: Int = 0,
-    private val externalInput: ExternalInput
+    val config: GameView.Config,
+    private val externalInput: ExternalInput,
 ) {
-    // get a non mutable reference to the config object at the time this state was created
-    val config: GameView.Config = externalInput.config
 
-    val directionToFallFrom: FallFromDirection
-        get() = externalInput.directionToFallFrom
+    val directionToFallFrom: FallFromDirection = externalInput.directionToFallFrom
 
     fun getNextState(): State {
-        return this.copy(tick = tick + 1).stepThroughStateMachine()
+        return this
+            .copy(tick = tick + 1)
+            .stepThroughStateMachine()
     }
 
     /**
@@ -148,8 +181,10 @@ data class State(
         }
     }
 
-    private fun handleInputDetected(stepState: Step.InputDetected): State {
-        val input = stepState.touchInput
+    private fun handleInputDetected(step: Step.InputDetected): State {
+        val input = step.touchInput
+
+        // TODO: handle case where tiles shrank to be smaller than selected x and y
         val touchedTile = tiles[input.touched.x][input.touched.y]
         val switchWithTile = tiles[input.switchWith.x][input.switchWith.y]
 
@@ -163,8 +198,8 @@ data class State(
                     }
                 }
             },
-            step = when (stepState.switchBackIfNoPoints) {
-                true -> Step.CheckForPoints(stepState)
+            step = when (step.switchBackIfNoPoints) {
+                true -> Step.CheckForPoints(step)
                 false -> Step.WaitForInput
             }
         )
@@ -175,6 +210,8 @@ data class State(
         // if any fallable tiles set current state to TilesFalling
         // if no fallable tiles set current state to CheckForPoints
 
+        check(tiles.size == config.gridSize)
+        check(tiles.first().size == config.gridSize)
         val gravityFixedTiles = tiles.fixTilesByGravity(directionToFallFrom)
 
         val lowestPosYOfFallableTiles: List<TileYCoordinate> = gravityFixedTiles.map { tileColumn ->
@@ -201,7 +238,7 @@ data class State(
         return this.copy(step = nextStep)
     }
 
-    private fun handleTilesFalling(stepState: Step.TilesFalling): State {
+    private fun handleTilesFalling(step: Step.TilesFalling): State {
         // shift ones that fell to tile spot below
         // set current state to CheckForFallableTiles
 
@@ -227,9 +264,12 @@ data class State(
         val joinedGridShift = tiles.fixTilesByGravity(directionToFallFrom)
             .mapIndexed { index, list -> invisibleTiles[index] + list }
             .mapIndexed { index, arrayOfTiles ->
-                val lowestFallableTile = stepState.lowestPosYOfFallableTiles[index] + config.gridSize
+                val lowestFallableTile = step.lowestPosYOfFallableTiles[index] + config.gridSize
                 arrayOfTiles.shiftTilesInColumnDown(lowestFallableTile)
             }
+
+        check(config.gridSize == joinedGridShift.size)
+        check(config.gridSize * 2 == joinedGridShift.first().size)
 
         return this.copy(
             tiles = joinedGridShift
@@ -241,7 +281,9 @@ data class State(
 
     }
 
-    private fun handleCheckForPoints(stepState: Step.CheckForPoints): State {
+    private fun handleCheckForPoints(step: Step.CheckForPoints): State {
+        check(null !in tiles.flatten())
+
         fun List<Tile>.checkMatchesInColumnOrTransposedRow(): List<Tile?> {
             val tilesWithRemoved = this.toMutableList<Tile?>()
 
@@ -311,13 +353,13 @@ data class State(
         }
 
         val nextStep = when (isBoardSame) {
-            true -> when (stepState.previousInput == null) {
+            true -> when (step.previousInput == null) {
                 true -> Step.WaitForInput
                 false -> Step.InputDetected(
                     touchInput = TouchInput(
-                        touched = stepState.previousInput.touchInput.switchWith,
-                        switchWith = stepState.previousInput.touchInput.touched,
-                        moveDirection = stepState.previousInput.touchInput.moveDirection.opposite()
+                        touched = step.previousInput.touchInput.switchWith,
+                        switchWith = step.previousInput.touchInput.touched,
+                        moveDirection = step.previousInput.touchInput.moveDirection.opposite()
                     ),
                     startTick = tick,
                     switchBackIfNoPoints = false

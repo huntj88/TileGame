@@ -29,12 +29,11 @@ class GravitySensor(private val setGravityDirection: (FallFromDirection) -> Unit
             val pitch = Math.toDegrees(rotVals[1].toDouble()).toFloat()
             val roll = Math.toDegrees(rotVals[2].toDouble()).toFloat()
 
-             Log.d("pitch", pitch.toString())
-             Log.d("roll", roll.toString())
-             Log.d("azimuth", azimuth.toString())
+//             Log.d("pitch", pitch.toString())
+//             Log.d("roll", roll.toString())
+//             Log.d("azimuth", azimuth.toString())
 
             fallFromDirectionFromPitch(pitch, roll)?.let {
-                println(it)
                 setGravityDirection(it)
             }
         }

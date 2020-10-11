@@ -16,8 +16,8 @@ class ExternalInput {
     var directionToFallFrom: FallFromDirection = FallFromDirection.Top
         private set
 
-    fun setDirectionToFallFrom(stepState: Step, directionToFallFrom: FallFromDirection) {
-        if (stepState !is Step.TilesFalling) {
+    fun setDirectionToFallFrom(step: Step, directionToFallFrom: FallFromDirection) {
+        if (step !is Step.TilesFalling) {
             this.directionToFallFrom = directionToFallFrom
         }
     }

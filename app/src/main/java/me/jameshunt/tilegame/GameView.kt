@@ -10,6 +10,7 @@ import me.jameshunt.tilegame.Step.*
 import me.jameshunt.tilegame.input.*
 import kotlin.math.floor
 import kotlin.math.min
+import kotlin.random.Random
 
 
 class GameView @JvmOverloads constructor(
@@ -59,14 +60,25 @@ class GameView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        // randomlyConfigure()
 
         stateMachine.getCurrentState().renderTileGrid(tileRenderer, canvas, screenContext)
 
         drawEdgesOfBoard(canvas, screenContext)
     }
 
+    private fun randomlyConfigure() {
+        if(Random.nextInt() % 5 == 0) {
+            val gridSize = externalInput.config.gridSize
+            externalInput.config = externalInput.config.copy(gridSize = gridSize + (Random.nextInt() % 2))
+        }
+    }
+
     fun setDirectionToFallFrom(direction: FallFromDirection) {
-        externalInput.setDirectionToFallFrom(stateMachine.getCurrentState().step, direction)
+        externalInput.setDirectionToFallFrom(
+            step = stateMachine.getCurrentState().step,
+            directionToFallFrom = direction
+        )
     }
 
     private fun handleTouchEvents() {
