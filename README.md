@@ -8,12 +8,6 @@ The game state itself is represented with immutable data structures.
 The custom view has a grid of falling tiles that will always fall down according to gravity (rotate/tilt phone).
 If more than 3 (adjustable) tiles of the same color are in a row, then remove the tiles
 
-# Finite State Machine
-![StateMachine diagram for game state](statemachine.png)
-
-For every tick that happens, the current state is taken as an input,
-a new state is computed from the old state, but advanced 1 tick further ahead in time.
-
 # Motivation
 Back in 2014 I had written something similar to this in 8 or so months in my spare time. 
 That project was the really old project I liked to show people, both because it was pretty polished 
@@ -49,7 +43,24 @@ Three days later I had reimplemented the core functionality, and since then i've
   immutable data structures
 - Added a CI/CD pipeline to upload release builds to google play
 
-#### Configurable variables:
+# Finite State Machine
+![StateMachine diagram for game state](statemachine.png)
+
+The state machine loops infinitely on a background thread. Each iteration would increment the *tick* by 1.
+
+For every tick that happens, the current state is taken as an input,
+a new state is computed from the old state, but advanced 1 tick further ahead in time.
+
+#### Looping speed
+By running the state machine on a background thread, the rate at which we progress through the 
+state machine can be fine tuned. We can run it as fast or as slowly as we want to without the UI having to know about this process.
+
+If we loop really slowly the UI will only update as fast as we give it new states to render.
+
+If we loop really fast the UI will only render a portion of the frames without constraining the state machines ability to keep going.
+
+# Configurable variables:
+If new config variables are set, they will be applied in the next tick 
 |Name|Default|Description|
 -|-|-
 numTilesSize | 8 | Number of tiles across the grid is
