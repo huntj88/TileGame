@@ -26,8 +26,8 @@ class StateMachine(
                 val nextState = try {
                     lastState
                         .loadInputChanges(input)
-                        .loadConfigChange(input.config)
                         .getNextState()
+                        .loadConfigChange(input.config)
                 } catch (t: Throwable) {
                     onError(t)
                     return@submit

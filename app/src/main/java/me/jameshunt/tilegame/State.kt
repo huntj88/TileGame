@@ -86,6 +86,11 @@ data class State(
     }
 
     private fun handleWaitForInput(): State {
+        if (null in tiles.flatten()) {
+            // check if board has nulls (due to grid resizing) and make them fall
+            return this.copy(step = Step.CheckForFallableTiles)
+        }
+
         return when (val input = lastTouchInput) {
             null -> this // state unchanged, keep waiting on input
             else -> this.copy(step = Step.InputDetected(input, tick))
