@@ -1,6 +1,5 @@
 package me.jameshunt.tilegame
 
-import me.jameshunt.tilegame.input.ExternalInput
 import me.jameshunt.tilegame.input.FallFromDirection
 import me.jameshunt.tilegame.input.TouchInput
 
@@ -48,11 +47,10 @@ data class State(
     val invisibleTiles: List<List<Tile?>>,
     val step: Step,
     val tick: Int = 0,
-    val config: GameView.Config, // copy of the config at the time the State was created
-    private val externalInput: ExternalInput,
+    val config: GameView.Config, // copy of the config at the time the State was created ,
+    val directionToFallFrom: FallFromDirection,
+    private val lastTouchInput: TouchInput?
 ) {
-
-    val directionToFallFrom: FallFromDirection = externalInput.directionToFallFrom
 
     fun getNextState(): State {
         return this
@@ -88,19 +86,22 @@ data class State(
     }
 
     private fun handleWaitForInput(): State {
-        return when (val input = externalInput.lastTouchInput) {
+        return when (val input = lastTouchInput) {
             null -> this // state unchanged, keep waiting on input
-            else -> this
-                .apply { externalInput.lastTouchInput = null }
-                .copy(step = Step.InputDetected(input, tick))
+            else -> this.copy(step = Step.InputDetected(input, tick))
         }
     }
 
     private fun handleInputDetected(step: Step.InputDetected): State {
         val input = step.touchInput
 
-        val touchedTile = tiles.getOrNull(input.touched.x)?.getOrNull(input.touched.y)
-        val switchWithTile = tiles.getOrNull(input.switchWith.x)?.getOrNull(input.switchWith.y)
+        check(input.touched.x >= 0 && input.touched.x <= tiles.size - 1)
+        check(input.touched.y >= 0 && input.touched.y <= tiles.size - 1)
+        check(input.switchWith.x >= 0 && input.switchWith.x <= tiles.size - 1)
+        check(input.switchWith.y >= 0 && input.switchWith.y <= tiles.size - 1)
+
+        val touchedTile = tiles[input.touched.x][input.touched.y]
+        val switchWithTile = tiles[input.switchWith.x][input.switchWith.y]
 
         return this.copy(
             tiles = tiles.map { column ->
