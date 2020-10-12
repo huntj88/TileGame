@@ -1,9 +1,7 @@
 package me.jameshunt.tilegame.input
 
-import me.jameshunt.tilegame.GameView
-import me.jameshunt.tilegame.Step
-import me.jameshunt.tilegame.TileXCoordinate
-import me.jameshunt.tilegame.TileYCoordinate
+import me.jameshunt.tilegame.*
+import kotlin.math.floor
 
 /**
  * The only mutable state I actually need, because its external user input
@@ -32,6 +30,28 @@ data class TouchInput(
         val y: TileYCoordinate
     )
 }
+
+fun OnInputTouchListener.TouchInfo.toInput(
+    gridSize: Int,
+    screenContext: ScreenContext
+): TouchInput {
+    val xTouchInGrid = this.xTouch - screenContext.gridStartX
+    val xTile = floor(xTouchInGrid / screenContext.gridSizePixels * gridSize).toInt()
+
+    val yTouchInGrid = this.yTouch - screenContext.gridStartY
+    val yTile = floor(yTouchInGrid / screenContext.gridSizePixels * gridSize).toInt()
+
+    val touched = TouchInput.TileCoordinate(xTile, yTile)
+    val switchWith = when (this.moveDirection) {
+        MoveDirection.Up -> TouchInput.TileCoordinate(xTile, yTile - 1)
+        MoveDirection.Down -> TouchInput.TileCoordinate(xTile, yTile + 1)
+        MoveDirection.Left -> TouchInput.TileCoordinate(xTile - 1, yTile)
+        MoveDirection.Right -> TouchInput.TileCoordinate(xTile + 1, yTile)
+    }
+
+    return TouchInput(touched, switchWith, this.moveDirection)
+}
+
 
 /**
  * affected by gravity (rotate/tilt)
