@@ -20,10 +20,10 @@ class GameView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
     data class Config(
-        val gridSize: Int = 13,
-        val numTileTypes: Int = 5 ,// max of 6 at the moment, add more in TileType
-        val numToMatch: Int = 2,
-        val milliToSleepFor: Long = 16L,
+        val gridSize: Int = 18,
+        val numTileTypes: Int = 6, // max of 6 at the moment, add more in TileType
+        val numToMatch: Int = 3,
+        val milliToSleepFor: Long = 4L,
         val sleepEveryXTicks: Int = 1
     )
 
@@ -95,27 +95,10 @@ class GameView @JvmOverloads constructor(
         setOnTouchListener(OnInputTouchListener { touchInfo ->
             if (stateMachine.getCurrentState().step != WaitForInput) return@OnInputTouchListener
 
-            val xTouchInGrid = touchInfo.xTouch - screenContext.gridStartX
-            val gridSize = externalInput.config.gridSize
-            val xTile = floor(xTouchInGrid / screenContext.gridSizePixels * gridSize).toInt()
-
-            val yTouchInGrid = touchInfo.yTouch - screenContext.gridStartY
-            val yTile = floor(yTouchInGrid / screenContext.gridSizePixels * gridSize).toInt()
-
-            val touched = TouchInput.TileCoordinate(xTile, yTile)
-            val switchWith = when (touchInfo.moveDirection) {
-                MoveDirection.Up -> TouchInput.TileCoordinate(xTile, yTile - 1)
-                MoveDirection.Down -> TouchInput.TileCoordinate(xTile, yTile + 1)
-                MoveDirection.Left -> TouchInput.TileCoordinate(xTile - 1, yTile)
-                MoveDirection.Right -> TouchInput.TileCoordinate(xTile + 1, yTile)
-            }
-
-            val validXMove = switchWith.x in (0 until gridSize)
-            val validYMove = switchWith.y in (0 until gridSize)
-
-            if (validXMove && validYMove) {
-                externalInput.lastTouchInput = TouchInput(touched, switchWith, touchInfo.moveDirection)
-            }
+            externalInput.lastTouchInput = touchInfo.toInput(
+                gridSize = externalInput.config.gridSize,
+                screenContext = screenContext
+            )
         })
     }
 

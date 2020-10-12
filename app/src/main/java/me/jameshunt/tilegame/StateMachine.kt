@@ -16,15 +16,18 @@ class StateMachine(
         // UI thread also needs to do less work
         Executors.newSingleThreadExecutor().submit {
             while (true) {
-                if (state.tick % externalInput.config.sleepEveryXTicks == 0) {
-                    Thread.sleep(externalInput.config.milliToSleepFor)
+                val input = externalInput
+
+                if (state.tick % input.config.sleepEveryXTicks == 0) {
+                    Thread.sleep(input.config.milliToSleepFor)
                 }
 
                 val lastState = state
                 val nextState = try {
                     lastState
-                        .loadConfigChange()
+                        .loadInputChanges(input)
                         .getNextState()
+                        .loadConfigChange(input.config)
                 } catch (t: Throwable) {
                     onError(t)
                     return@submit
@@ -43,45 +46,74 @@ class StateMachine(
 
     fun getCurrentState(): State = synchronized(this) { state }
 
-    private fun State.loadConfigChange(): State {
-        if (this.step is Step.CheckForPoints) {
-            // defer loading config until after match evaluation
+    private fun State.loadInputChanges(externalInput: ExternalInput): State {
+        if (this.step is Step.InputDetected) {
+            // already handling current input
             return this
         }
 
-        val currentConfig = externalInput.config
-
-        fun Step.TilesFalling.handleTilesFallingConfigChange(): Step {
-            // falling state data could be stale due to different tile grid size
-            return when (currentConfig.gridSize == this.lowestPosYOfFallableTiles.size) {
-                true -> this
-                false -> Step.CheckForFallableTiles
-            }
-        }
+        fun Int.isInGridRange(): Boolean = this in (0 until externalInput.config.gridSize)
 
         return this.copy(
-            config = currentConfig,
-            tiles = this.tiles.shrinkOrGrow(currentConfig.gridSize),
-            invisibleTiles = this.invisibleTiles.shrinkOrGrowFilled(
-                currentConfig.gridSize,
-                currentConfig.numTileTypes
-            ),
-            step = when (step) {
-                is Step.TilesFalling -> step.handleTilesFallingConfigChange()
-                else -> step
+            directionToFallFrom = externalInput.directionToFallFrom,
+            lastTouchInput = externalInput.lastTouchInput?.let {
+                val validXMove = it.touched.x.isInGridRange() && it.switchWith.x.isInGridRange()
+                val validYMove = it.touched.y.isInGridRange() && it.switchWith.y.isInGridRange()
+
+                this@StateMachine.externalInput.lastTouchInput = null
+
+                when (validXMove && validYMove) {
+                    true -> it
+                    false -> null
+                }
             }
         )
     }
 
     private fun getInitialState(): State {
-        val gridSize = externalInput.config.gridSize
-        val numTileTypes = externalInput.config.numTileTypes
+        val config = externalInput.config
+        val gridSize = config.gridSize
+        val numTileTypes = config.numTileTypes
         return State(
             tiles = getInitialBoard(gridSize, numTileTypes),
             invisibleTiles = getInitialBoard(gridSize, numTileTypes),
             step = Step.CheckForFallableTiles,
-            externalInput = externalInput,
-            config = externalInput.config
+            config = config,
+            directionToFallFrom = externalInput.directionToFallFrom,
+            lastTouchInput = null
         )
     }
+}
+
+internal fun State.loadConfigChange(newConfig: GameView.Config): State {
+    if (this.step is Step.InputDetected) {
+        // defer loading config until after CheckForPoints evaluation
+        return this
+    }
+
+    if (this.step is Step.CheckForPoints) {
+        // defer loading config until after match evaluation
+        return this
+    }
+
+    fun Step.TilesFalling.handleTilesFallingConfigChange(): Step {
+        // falling state data could be stale due to different tile grid size
+        return when (newConfig.gridSize == this.lowestPosYOfFallableTiles.size) {
+            true -> this
+            false -> Step.CheckForFallableTiles
+        }
+    }
+
+    return this.copy(
+        config = newConfig,
+        tiles = this.tiles.shrinkOrGrow(newConfig.gridSize),
+        invisibleTiles = this.invisibleTiles.shrinkOrGrowFilled(
+            newGridSize = newConfig.gridSize,
+            numTileTypes = newConfig.numTileTypes
+        ),
+        step = when (step) {
+            is Step.TilesFalling -> step.handleTilesFallingConfigChange()
+            else -> step
+        }
+    )
 }
