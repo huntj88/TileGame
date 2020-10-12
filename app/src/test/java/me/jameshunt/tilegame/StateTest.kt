@@ -21,8 +21,9 @@ class StateTest {
                 listOf(Tile(TileType.One), Tile(TileType.One))
             ),
             step = Step.CheckForFallableTiles,
-            externalInput = ex,
-            config = ex.config
+            directionToFallFrom = ex.directionToFallFrom,
+            config = ex.config,
+            lastTouchInput = null
         )
 
         state1
@@ -43,8 +44,9 @@ class StateTest {
                 listOf(Tile(TileType.One), Tile(TileType.One))
             ),
             step = Step.CheckForFallableTiles,
-            externalInput = ex,
-            config = ex.config
+            directionToFallFrom = ex.directionToFallFrom,
+            config = ex.config,
+            lastTouchInput = null
         )
 
         state1
@@ -68,8 +70,9 @@ class StateTest {
             ),
             invisibleTiles = emptyList(),
             step = Step.CheckForFallableTiles,
-            externalInput = ex,
-            config = ex.config
+            directionToFallFrom = ex.directionToFallFrom,
+            config = ex.config,
+            lastTouchInput = null
         )
 
         val state2 = state1
@@ -84,6 +87,29 @@ class StateTest {
             assertTrue(newBoard[1][0] == null)
             assertTrue(newBoard[2][0] == null)
         }
+    }
+
+    @Test
+    fun growGridTest() {
+        val ex = ExternalInput(GameView.Config(gridSize = 3))
+        val state1 = State(
+            tiles = listOf(
+                listOf(Tile(TileType.One), Tile(TileType.Two), Tile(TileType.One)),
+                listOf(Tile(TileType.Two), Tile(TileType.Two), Tile(TileType.Three)),
+                listOf(Tile(TileType.Four), Tile(TileType.Three), Tile(TileType.Two))
+            ),
+            invisibleTiles = emptyList(),
+            step = Step.WaitForInput,
+            directionToFallFrom = ex.directionToFallFrom,
+            config = ex.config,
+            lastTouchInput = null
+        )
+
+        state1
+            .loadConfigChange(ex.config.copy(gridSize = 4))
+            .getNextState().also {
+                assertTrue(it.step is Step.CheckForFallableTiles)
+            }
     }
 
     private fun State.assertShouldFallThenMoveBackToCheck(): State {

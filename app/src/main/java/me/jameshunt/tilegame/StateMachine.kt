@@ -70,39 +70,6 @@ class StateMachine(
         )
     }
 
-    private fun State.loadConfigChange(newConfig: GameView.Config): State {
-        if (this.step is Step.InputDetected) {
-            // defer loading config until after CheckForPoints evaluation
-            return this
-        }
-
-        if (this.step is Step.CheckForPoints) {
-            // defer loading config until after match evaluation
-            return this
-        }
-
-        fun Step.TilesFalling.handleTilesFallingConfigChange(): Step {
-            // falling state data could be stale due to different tile grid size
-            return when (newConfig.gridSize == this.lowestPosYOfFallableTiles.size) {
-                true -> this
-                false -> Step.CheckForFallableTiles
-            }
-        }
-
-        return this.copy(
-            config = newConfig,
-            tiles = this.tiles.shrinkOrGrow(newConfig.gridSize),
-            invisibleTiles = this.invisibleTiles.shrinkOrGrowFilled(
-                newGridSize = newConfig.gridSize,
-                numTileTypes = newConfig.numTileTypes
-            ),
-            step = when (step) {
-                is Step.TilesFalling -> step.handleTilesFallingConfigChange()
-                else -> step
-            }
-        )
-    }
-
     private fun getInitialState(): State {
         val config = externalInput.config
         val gridSize = config.gridSize
@@ -116,4 +83,37 @@ class StateMachine(
             lastTouchInput = null
         )
     }
+}
+
+internal fun State.loadConfigChange(newConfig: GameView.Config): State {
+    if (this.step is Step.InputDetected) {
+        // defer loading config until after CheckForPoints evaluation
+        return this
+    }
+
+    if (this.step is Step.CheckForPoints) {
+        // defer loading config until after match evaluation
+        return this
+    }
+
+    fun Step.TilesFalling.handleTilesFallingConfigChange(): Step {
+        // falling state data could be stale due to different tile grid size
+        return when (newConfig.gridSize == this.lowestPosYOfFallableTiles.size) {
+            true -> this
+            false -> Step.CheckForFallableTiles
+        }
+    }
+
+    return this.copy(
+        config = newConfig,
+        tiles = this.tiles.shrinkOrGrow(newConfig.gridSize),
+        invisibleTiles = this.invisibleTiles.shrinkOrGrowFilled(
+            newGridSize = newConfig.gridSize,
+            numTileTypes = newConfig.numTileTypes
+        ),
+        step = when (step) {
+            is Step.TilesFalling -> step.handleTilesFallingConfigChange()
+            else -> step
+        }
+    )
 }
