@@ -47,7 +47,7 @@ data class State(
     val invisibleTiles: List<List<Tile?>>,
     val step: Step,
     val tick: Int = 0,
-    val config: GameView.Config, // copy of the config at the time the State was created ,
+    val config: GameView.Config,
     val directionToFallFrom: FallFromDirection,
     private val lastTouchInput: TouchInput?
 ) {
@@ -303,8 +303,11 @@ data class State(
 }
 
 fun List<List<Tile?>>.fixTilesByGravity(directionToFallFrom: FallFromDirection): List<List<Tile?>> {
-    // all logic was originally assumed to have a falling direction of down from the top
-    // this fixes the 2d tile grid so that the logic works in other directions too
+    // all logic was originally assumed to have tiles fall from the top of the grid
+    // this manipulates the board so the same logic can be applied when tiles fall from a different direction
+
+    // applying this twice will give you the original value
+    // https://en.wikipedia.org/wiki/Involution_(mathematics)
 
     fun List<List<Tile?>>.reverseGrid(): List<List<Tile?>> =
         this.map { it.reversed() }.reversed()
