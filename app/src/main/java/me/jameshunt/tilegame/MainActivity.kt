@@ -32,46 +32,30 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         settingsButton.setOnClickListener {
-            showConfigDialog()
+            val configDialog = supportFragmentManager
+                .findFragmentByTag("config")
+                ?.let { it as? ConfigDialog }
+                ?: ConfigDialog()
+
+            configDialog.show(supportFragmentManager, "config")
         }
-    }
-
-    private fun showConfigDialog() {
-        val configDialog = supportFragmentManager
-            .findFragmentByTag("config")
-            ?.let { it as? ConfigDialog }
-            ?: ConfigDialog()
-
-        configDialog.setVars()
-        configDialog.show(supportFragmentManager, "config")
     }
 
     override fun onResume() {
         super.onResume()
         sensorManager.registerListener(gravitySensor, sensor, SensorManager.SENSOR_DELAY_GAME)
-        supportFragmentManager
-            .findFragmentByTag("config")
-            ?.let { it as? ConfigDialog }
-            ?.setVars()
     }
 
     override fun onPause() {
         super.onPause()
         sensorManager.unregisterListener(gravitySensor)
     }
-
-    private fun ConfigDialog.setVars() {
-        val gameView = findViewById<GameView>(R.id.gameView)
-        this.config = gameView.config
-        this.callback = {
-            gameView.config = it
-        }
-    }
 }
 
 class ConfigDialog : DialogFragment() {
-    lateinit var config: GameView.Config
-    lateinit var callback: (GameView.Config) -> Unit
+    private var config: GameView.Config
+        get() = requireActivity().gameView.config
+        set(value) { requireActivity().gameView.config = value }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -89,8 +73,6 @@ class ConfigDialog : DialogFragment() {
         )
 
         showCurrentConfig()
-
-        callback(config)
     }
 
     private fun showCurrentConfig() {
