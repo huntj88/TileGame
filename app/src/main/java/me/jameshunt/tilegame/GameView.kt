@@ -20,34 +20,16 @@ class GameView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
     data class Config(
-        val gridSize: Int = 18,
-        val numTileTypes: Int = 6, // max of 6 at the moment, add more in TileType
+        val gridSize: Int = 8,
+        val numTileTypes: Int = 3, // max of 6 at the moment, add more in TileType
         val numToMatch: Int = 3,
-        val milliToSleepFor: Long = 4L,
+        val milliToSleepFor: Long = 16L,
         val sleepEveryXTicks: Int = 1
     )
 
     init {
         setBackgroundColor(Color.GRAY)
         handleTouchEvents()
-    }
-
-    // will be instantiated after view is measured.
-    private val screenContext by lazy {
-        check(height != 0 && width != 0)
-        val gridSizePixels = min(width, height)
-
-        ScreenContext(
-            gridSizePixels = gridSizePixels,
-            gridStartX = when (width == gridSizePixels) {
-                true -> 0
-                false -> (width - height) / 2
-            },
-            gridStartY = when (height == gridSizePixels) {
-                true -> 0
-                false -> (height - width) / 2
-            }
-        )
     }
 
     private val tileRenderer = TileRenderer()
@@ -59,29 +41,40 @@ class GameView @JvmOverloads constructor(
         onError = { post { throw it } }
     )
 
+    var config: Config
+        get() = externalInput.config
+        set(value) { externalInput.config = value }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        val screenContext = screenContext()
+
         // randomlyConfigure()
-
         stateMachine.getCurrentState().renderTileGrid(tileRenderer, canvas, screenContext)
-
         drawEdgesOfBoard(canvas, screenContext)
     }
 
     private fun randomlyConfigure() {
-        if(Random.nextInt() % 5 == 0) {
-            val gridSize = externalInput.config.gridSize
-            externalInput.config = externalInput.config.copy(gridSize = gridSize + (Random.nextInt() % 2))
-        }
+        externalInput.config = externalInput.config
+            .randomlyResizeGrid()
+            .speedUpGameOverTime()
+    }
 
-        if(Random.nextInt() % 400 == 0) {
-            val everyXTicks = externalInput.config.sleepEveryXTicks
-            val milli = externalInput.config.milliToSleepFor
-            externalInput.config = externalInput.config.copy(
-                sleepEveryXTicks = everyXTicks + 1,
-                milliToSleepFor = max(1, milli - 1)
-            )
-        }
+    private fun screenContext(): ScreenContext {
+        check(height != 0 && width != 0)
+        val gridSizePixels = min(width, height)
+
+        return ScreenContext(
+            gridSizePixels = gridSizePixels,
+            gridStartX = when (width == gridSizePixels) {
+                true -> 0
+                false -> (width - height) / 2
+            },
+            gridStartY = when (height == gridSizePixels) {
+                true -> 0
+                false -> (height - width) / 2
+            }
+        )
     }
 
     fun setDirectionToFallFrom(direction: FallFromDirection) {
@@ -97,7 +90,7 @@ class GameView @JvmOverloads constructor(
 
             externalInput.lastTouchInput = touchInfo.toInput(
                 gridSize = externalInput.config.gridSize,
-                screenContext = screenContext
+                screenContext = screenContext()
             )
         })
     }
@@ -127,3 +120,27 @@ data class ScreenContext(
     val gridStartX: Int,
     val gridStartY: Int
 )
+
+private fun GameView.Config.randomlyResizeGrid(): GameView.Config {
+    return when (Random.nextInt() % 3 == 0) {
+        true -> {
+            val gridSize = this.gridSize
+            val minGridSize = 13
+            val maxGridSize = 30
+            val incrementBy = (Random.nextInt() % 2) * ((Random.nextInt() % 3) + 1)
+            val gridSizeInRange = max(minGridSize, (gridSize + incrementBy) % maxGridSize)
+            this.copy(gridSize = gridSizeInRange)
+        }
+        false -> this
+    }
+}
+
+private fun GameView.Config.speedUpGameOverTime(): GameView.Config {
+    return when (Random.nextInt() % 400 == 0) {
+        true -> this.copy(
+            sleepEveryXTicks = this.sleepEveryXTicks + 1,
+            milliToSleepFor = max(1, this.milliToSleepFor - 1)
+        )
+        false -> this
+    }
+}

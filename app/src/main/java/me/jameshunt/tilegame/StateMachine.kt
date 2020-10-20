@@ -37,7 +37,9 @@ class StateMachine(
                     state = nextState
                 }
 
-                if (lastState.step != Step.WaitForInput || nextState.step != Step.WaitForInput) {
+                if (lastState.step == Step.WaitForInput && nextState.step == Step.WaitForInput) {
+                    Thread.sleep(20)
+                } else {
                     onNewStateReadyForRender()
                 }
             }
@@ -115,5 +117,10 @@ internal fun State.loadConfigChange(newConfig: GameView.Config): State {
             is Step.TilesFalling -> step.handleTilesFallingConfigChange()
             else -> step
         }
-    )
+    ).also {
+        check(it.config.gridSize == it.tiles.size)
+        check(it.config.gridSize == it.invisibleTiles.size)
+        check(it.config.gridSize == it.tiles.first().size)
+        check(it.config.gridSize == it.invisibleTiles.first().size)
+    }
 }

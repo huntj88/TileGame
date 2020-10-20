@@ -4,7 +4,8 @@ import me.jameshunt.tilegame.*
 import kotlin.math.floor
 
 /**
- * The only mutable state I actually need, because its external user input
+ * The only mutable state I actually need, because its external user input.
+ * Applied immutably in state machine
  */
 class ExternalInput(var config: GameView.Config = GameView.Config()) {
     var lastTouchInput: TouchInput? = null
