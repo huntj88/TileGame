@@ -69,7 +69,7 @@ class StateMachine(
             }
 
             if (lastState.step == Step.WaitForInput && nextState.step == Step.WaitForInput) {
-                Thread.sleep(20)
+                Thread.sleep(80)
             } else {
                 onNewStateReadyForRender()
             }

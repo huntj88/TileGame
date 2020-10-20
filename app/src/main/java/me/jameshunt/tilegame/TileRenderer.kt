@@ -40,7 +40,7 @@ private fun State.renderNewlyVisibleTiles(
 ) {
     if (step !is Step.TilesFalling) return
 
-    val fixTilesByGravity = tiles.fixTilesByGravity(directionToFallFrom)
+    val fixTilesByGravity = tiles.alignTilesByFallDirection(directionToFallFrom)
     (0 until config.gridSize).forEach { i ->
         if (null in fixTilesByGravity[i]) {
             invisibleTiles[i].last()?.type?.let { tileType ->

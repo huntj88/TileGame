@@ -132,9 +132,9 @@ data class State(
 
         check(tiles.size == config.gridSize)
         check(tiles.first().size == config.gridSize)
-        val gravityFixedTiles = tiles.fixTilesByGravity(directionToFallFrom)
+        val directionFixedTiles = tiles.alignTilesByFallDirection(directionToFallFrom)
 
-        val lowestPosYOfFallableTiles: List<TileYCoordinate> = gravityFixedTiles.map { tileColumn ->
+        val lowestPosYOfFallableTiles: List<TileYCoordinate> = directionFixedTiles.map { tileColumn ->
             val lowestPosOfNullTile = tileColumn.indexOfLast { it == null }
             (0 until lowestPosOfNullTile)
                 .map { tileColumn[it] }
@@ -143,7 +143,7 @@ data class State(
 
         val doneFalling = lowestPosYOfFallableTiles.foldIndexed(true) { index, acc, posY ->
             val indexOfBottomTile = config.gridSize - 1
-            acc && (posY == indexOfBottomTile || null !in gravityFixedTiles[index])
+            acc && (posY == indexOfBottomTile || null !in directionFixedTiles[index])
         }
 
         val nextStep = when (doneFalling) {
@@ -181,7 +181,7 @@ data class State(
             return tilesThatFell + tilesThatDidNotFall
         }
 
-        val joinedGridShift = tiles.fixTilesByGravity(directionToFallFrom)
+        val joinedGridShift = tiles.alignTilesByFallDirection(directionToFallFrom)
             .mapIndexed { index, list -> invisibleTiles[index] + list }
             .mapIndexed { index, arrayOfTiles ->
                 val lowestFallableTile = step.lowestPosYOfFallableTiles[index] + config.gridSize
@@ -194,7 +194,7 @@ data class State(
         return this.copy(
             tiles = joinedGridShift
                 .map { it.subList(config.gridSize, config.gridSize * 2) }
-                .fixTilesByGravity(directionToFallFrom),
+                .alignTilesByFallDirection(directionToFallFrom),
             invisibleTiles = joinedGridShift.map { it.subList(0, config.gridSize) },
             step = Step.CheckForFallableTiles
         )
@@ -302,7 +302,7 @@ data class State(
     }
 }
 
-fun List<List<Tile?>>.fixTilesByGravity(directionToFallFrom: FallFromDirection): List<List<Tile?>> {
+fun List<List<Tile?>>.alignTilesByFallDirection(directionToFallFrom: FallFromDirection): List<List<Tile?>> {
     // all logic was originally assumed to have tiles fall from the top of the grid
     // this manipulates the board so the same logic can be applied when tiles fall from a different direction
 
