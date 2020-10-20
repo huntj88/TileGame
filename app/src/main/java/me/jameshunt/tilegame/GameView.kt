@@ -92,7 +92,7 @@ class GameView @JvmOverloads constructor(
     override fun onRestoreInstanceState(state: Parcelable?) {
         (state as? Bundle)?.getParcelable<Config>("config")?.let { config ->
             val resumedTiles = state
-                .getIntegerArrayList("tiles")!!
+                .getIntegerArrayList("tiles")!! // config exists, tiles should too
                 .also { check(it.size % config.gridSize == 0) }
                 .map { typeEnumIndex ->
                     when (typeEnumIndex == Int.MIN_VALUE) {
