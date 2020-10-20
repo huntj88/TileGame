@@ -2,6 +2,7 @@ package me.jameshunt.tilegame
 
 import me.jameshunt.tilegame.input.ExternalInput
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
 class StateMachine(
     private val externalInput: ExternalInput,
@@ -9,44 +10,71 @@ class StateMachine(
     private val onError: (e: Throwable) -> Unit
 ) {
     private var state: State = getInitialState()
+    private var stateLoop: Future<*> = stateLoop()
 
-    init {
-        // By putting all of the magic in a background thread we can control
-        // the rate at which the state machine progresses
-        // UI thread also needs to do less work
-        Executors.newSingleThreadExecutor().submit {
-            while (true) {
-                val input = externalInput
+    fun getCurrentState(): State {
+        if (stateLoop.isDone) {
+            stateLoop = stateLoop()
+        }
+        return state
+    }
 
-                if (state.tick % input.config.sleepEveryXTicks == 0) {
-                    Thread.sleep(input.config.milliToSleepFor)
-                }
-
-                val lastState = state
-                val nextState = try {
-                    lastState
-                        .loadInputChanges(input)
-                        .getNextState()
-                        .loadConfigChange(input.config)
-                } catch (t: Throwable) {
-                    onError(t)
-                    return@submit
-                }
-
-                synchronized(this) {
-                    state = nextState
-                }
-
-                if (lastState.step == Step.WaitForInput && nextState.step == Step.WaitForInput) {
-                    Thread.sleep(20)
-                } else {
-                    onNewStateReadyForRender()
-                }
-            }
+    fun resumeState(config: GameView.Config, tiles: List<List<Tile?>>) {
+        synchronized(this) {
+            externalInput.config = config
+            state = state.copy(tiles = tiles).loadConfigChange(config)
         }
     }
 
-    fun getCurrentState(): State = synchronized(this) { state }
+    private fun getInitialState(): State {
+        val config = externalInput.config
+        val gridSize = config.gridSize
+        val numTileTypes = config.numTileTypes
+        return State(
+            tiles = getInitialBoard(gridSize, numTileTypes),
+            invisibleTiles = getInitialBoard(gridSize, numTileTypes),
+            step = Step.CheckForFallableTiles,
+            config = config,
+            directionToFallFrom = externalInput.directionToFallFrom,
+            lastTouchInput = null
+        )
+    }
+
+    /**
+     * By putting all of the magic in a background thread we can control
+     * the rate at which the state machine progresses
+     * The UI thread also needs to do less work
+     */
+    private fun stateLoop(): Future<*> = Executors.newSingleThreadExecutor().submit {
+        while (true) {
+            val input = externalInput
+
+            if (state.tick % input.config.sleepEveryXTicks == 0) {
+                Thread.sleep(input.config.milliToSleepFor)
+            }
+
+            val lastState = state
+            val nextState = try {
+                lastState
+                    .loadInputChanges(input)
+                    .getNextState()
+                    .loadConfigChange(input.config)
+            } catch (t: Throwable) {
+                onError(t)
+                return@submit
+            }
+
+            synchronized(this) {
+                state = nextState
+            }
+
+            if (lastState.step == Step.WaitForInput && nextState.step == Step.WaitForInput) {
+                Thread.sleep(20)
+            } else {
+                onNewStateReadyForRender()
+            }
+        }
+    }
 
     private fun State.loadInputChanges(externalInput: ExternalInput): State {
         if (this.step is Step.InputDetected) {
@@ -69,20 +97,6 @@ class StateMachine(
                     false -> null
                 }
             }
-        )
-    }
-
-    private fun getInitialState(): State {
-        val config = externalInput.config
-        val gridSize = config.gridSize
-        val numTileTypes = config.numTileTypes
-        return State(
-            tiles = getInitialBoard(gridSize, numTileTypes),
-            invisibleTiles = getInitialBoard(gridSize, numTileTypes),
-            step = Step.CheckForFallableTiles,
-            config = config,
-            directionToFallFrom = externalInput.directionToFallFrom,
-            lastTouchInput = null
         )
     }
 }

@@ -4,14 +4,17 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.os.Bundle
+import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.View
-import me.jameshunt.tilegame.Step.*
-import me.jameshunt.tilegame.input.*
-import kotlin.math.floor
-import kotlin.math.max
+import kotlinx.android.parcel.Parcelize
+import me.jameshunt.tilegame.Step.WaitForInput
+import me.jameshunt.tilegame.input.ExternalInput
+import me.jameshunt.tilegame.input.FallFromDirection
+import me.jameshunt.tilegame.input.OnInputTouchListener
+import me.jameshunt.tilegame.input.toInput
 import kotlin.math.min
-import kotlin.random.Random
 
 
 class GameView @JvmOverloads constructor(
@@ -19,13 +22,14 @@ class GameView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
+    @Parcelize
     data class Config(
         val gridSize: Int = 8,
         val numTileTypes: Int = 3, // max of 6 at the moment, add more in TileType
         val numToMatch: Int = 3,
         val milliToSleepFor: Long = 16L,
         val sleepEveryXTicks: Int = 1
-    )
+    ): Parcelable
 
     init {
         setBackgroundColor(Color.GRAY)
@@ -49,15 +53,8 @@ class GameView @JvmOverloads constructor(
         super.onDraw(canvas)
         val screenContext = screenContext()
 
-        // randomlyConfigure()
         stateMachine.getCurrentState().renderTileGrid(tileRenderer, canvas, screenContext)
         drawEdgesOfBoard(canvas, screenContext)
-    }
-
-    private fun randomlyConfigure() {
-        externalInput.config = externalInput.config
-            .randomlyResizeGrid()
-            .speedUpGameOverTime()
     }
 
     private fun screenContext(): ScreenContext {
@@ -75,6 +72,41 @@ class GameView @JvmOverloads constructor(
                 false -> (height - width) / 2
             }
         )
+    }
+
+    override fun onSaveInstanceState(): Parcelable {
+        val tilesFlattened = stateMachine
+            .getCurrentState()
+            .tiles
+            .flatten()
+            .map { tile -> tile?.type?.ordinal ?: Int.MIN_VALUE}
+
+        return Bundle().apply {
+            check(tilesFlattened.size % config.gridSize == 0)
+            putParcelable("super_state", super.onSaveInstanceState())
+            putParcelable("config", config)
+            putIntegerArrayList("tiles", ArrayList(tilesFlattened))
+        }
+    }
+
+    override fun onRestoreInstanceState(state: Parcelable?) {
+        (state as? Bundle)?.getParcelable<Config>("config")?.let { config ->
+            val resumedTiles = state
+                .getIntegerArrayList("tiles")!!
+                .also { check(it.size % config.gridSize == 0) }
+                .map { typeEnumIndex ->
+                    when (typeEnumIndex == Int.MIN_VALUE) {
+                        true -> null
+                        false -> Tile(TileType.values()[typeEnumIndex])
+                    }
+                }
+                .chunked(config.gridSize)
+
+            stateMachine.resumeState(config, resumedTiles)
+        }
+
+        val superState = (state as? Bundle)?.getParcelable("super_state") ?: state
+        super.onRestoreInstanceState(superState)
     }
 
     fun setDirectionToFallFrom(direction: FallFromDirection) {
@@ -120,27 +152,3 @@ data class ScreenContext(
     val gridStartX: Int,
     val gridStartY: Int
 )
-
-private fun GameView.Config.randomlyResizeGrid(): GameView.Config {
-    return when (Random.nextInt() % 3 == 0) {
-        true -> {
-            val gridSize = this.gridSize
-            val minGridSize = 13
-            val maxGridSize = 30
-            val incrementBy = (Random.nextInt() % 2) * ((Random.nextInt() % 3) + 1)
-            val gridSizeInRange = max(minGridSize, (gridSize + incrementBy) % maxGridSize)
-            this.copy(gridSize = gridSizeInRange)
-        }
-        false -> this
-    }
-}
-
-private fun GameView.Config.speedUpGameOverTime(): GameView.Config {
-    return when (Random.nextInt() % 400 == 0) {
-        true -> this.copy(
-            sleepEveryXTicks = this.sleepEveryXTicks + 1,
-            milliToSleepFor = max(1, this.milliToSleepFor - 1)
-        )
-        false -> this
-    }
-}
