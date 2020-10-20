@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">TileGame</string>
+    <string name="grid_size">Grid Size:</string>
+    <string name="save">Save</string>
+    <string name="settings">Settings</string>
+    <string name="sleep_milli">Sleep Milli:</string>
+    <string name="tile_types">Tile Types:</string>
+    <string name="num_match">Num Match:</string>
+    <string name="skip_frame">Skip Frame:</string>
 </resources>

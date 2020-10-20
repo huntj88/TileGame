@@ -32,12 +32,39 @@ class GameView @JvmOverloads constructor(
         handleTouchEvents()
     }
 
-    // will be instantiated after view is measured.
-    private val screenContext by lazy {
+    private val tileRenderer = TileRenderer()
+    private val externalInput = ExternalInput()
+
+    private val stateMachine = StateMachine(
+        externalInput = externalInput,
+        onNewStateReadyForRender = { invalidate() },
+        onError = { post { throw it } }
+    )
+
+    var config: Config
+        get() = externalInput.config
+        set(value) { externalInput.config = value }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val screenContext = screenContext()
+
+        // randomlyConfigure()
+        stateMachine.getCurrentState().renderTileGrid(tileRenderer, canvas, screenContext)
+        drawEdgesOfBoard(canvas, screenContext)
+    }
+
+    private fun randomlyConfigure() {
+        externalInput.config = externalInput.config
+            .randomlyResizeGrid()
+            .speedUpGameOverTime()
+    }
+
+    private fun screenContext(): ScreenContext {
         check(height != 0 && width != 0)
         val gridSizePixels = min(width, height)
 
-        ScreenContext(
+        return ScreenContext(
             gridSizePixels = gridSizePixels,
             gridStartX = when (width == gridSizePixels) {
                 true -> 0
@@ -48,30 +75,6 @@ class GameView @JvmOverloads constructor(
                 false -> (height - width) / 2
             }
         )
-    }
-
-    private val tileRenderer = TileRenderer()
-    private val externalInput = ExternalInput()
-
-    private val stateMachine = StateMachine(
-        externalInput = externalInput,
-        onNewStateReadyForRender = { invalidate() },
-        onError = { post { throw it } }
-    )
-
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        // randomlyConfigure()
-
-        stateMachine.getCurrentState().renderTileGrid(tileRenderer, canvas, screenContext)
-
-        drawEdgesOfBoard(canvas, screenContext)
-    }
-
-    private fun randomlyConfigure() {
-        externalInput.config = externalInput.config
-            .randomlyResizeGrid()
-            .speedUpGameOverTime()
     }
 
     fun setDirectionToFallFrom(direction: FallFromDirection) {
@@ -87,7 +90,7 @@ class GameView @JvmOverloads constructor(
 
             externalInput.lastTouchInput = touchInfo.toInput(
                 gridSize = externalInput.config.gridSize,
-                screenContext = screenContext
+                screenContext = screenContext()
             )
         })
     }
