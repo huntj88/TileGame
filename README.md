@@ -59,6 +59,38 @@ If we loop really slowly the UI will only update as fast as we give it new state
 
 If we loop really fast the UI will only render a portion of the frames without constraining the state machines ability to keep going.
 
+# Fun challenge after initial plan finished
+All of my logic for the tiles falling was written with the assumption that tiles fell to the bottom of 
+the screen, and new tiles would always fall from the top. To give myself a new challenge I would attempt to
+take the Earth's gravity into account for tile fall direction so that down was actually down. This also meant down could be top 
+of the screen, or the sides. It would no longer be restricted to to one fall direction.
+
+#### Solution
+I came to the realization that I didn't really need to change my logic at all. All that was actually 
+needed was for me to transform the grid in a specific way for each fall direction before passing the 
+result into my "fall from top only logic". I was able to keep 95% of my existing tile grid logic.
+
+Before executing some of the grid logic in a few key places, I would call `alignTilesByFallDirection()`
+```kotlin
+fun List<List<Tile?>>.alignTilesByFallDirection(directionToFallFrom: FallFromDirection): List<List<Tile?>> {
+    // all logic was originally assumed to have tiles fall from the top of the grid
+    // this manipulates the board so the same logic can be applied when tiles fall from a different direction
+
+    // applying this twice will give you the original value
+    // https://en.wikipedia.org/wiki/Involution_(mathematics)
+
+    fun List<List<Tile?>>.reverseGrid(): List<List<Tile?>> =
+        this.map { it.reversed() }.reversed()
+
+    return when (directionToFallFrom) {
+        FallFromDirection.Top -> this
+        FallFromDirection.Bottom -> this.map { it.reversed() }
+        FallFromDirection.Left -> this.transpose2DTileList()
+        FallFromDirection.Right -> this.transpose2DTileList().reverseGrid()
+    }
+}
+```
+
 # Configurable variables:
 If new config variables are set, they will be applied in the next tick 
 |Name|Default|Description|

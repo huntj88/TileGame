@@ -19,8 +19,8 @@ class FixTileByGravityTest {
 
         FallFromDirection.values().forEach {
             val appliedTwice = tiles
-                .fixTilesByGravity(it)
-                .fixTilesByGravity(it)
+                .alignTilesByFallDirection(it)
+                .alignTilesByFallDirection(it)
 
             assertEquals(appliedTwice, tiles)
         }
@@ -33,8 +33,8 @@ class FixTileByGravityTest {
 
             FallFromDirection.values().forEach {
                 val appliedTwice = tiles
-                    .fixTilesByGravity(it)
-                    .fixTilesByGravity(it)
+                    .alignTilesByFallDirection(it)
+                    .alignTilesByFallDirection(it)
 
                 assertEquals(appliedTwice, tiles)
             }
@@ -47,6 +47,6 @@ class FixTileByGravityTest {
 
         FallFromDirection.values()
             .filter { it != FallFromDirection.Top } // doesn't change grid at all
-            .forEach { assertNotEquals(tiles.fixTilesByGravity(it), tiles) }
+            .forEach { assertNotEquals(tiles.alignTilesByFallDirection(it), tiles) }
     }
 }

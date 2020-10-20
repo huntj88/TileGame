@@ -65,7 +65,7 @@ class ConfigDialog : DialogFragment() {
 
     private fun setNewConfig() {
         config = config.copy(
-            gridSize = max(1, gridSizeSeek.progress),
+            gridSize = max(2, gridSizeSeek.progress),
             milliToSleepFor = max(1, sleepLengthSeek.progress).toLong(),
             numTileTypes = max(1, numTileTypeSeek.progress),
             numToMatch = max(2, numMatchSeek.progress),

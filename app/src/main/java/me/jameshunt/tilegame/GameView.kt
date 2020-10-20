@@ -79,7 +79,7 @@ class GameView @JvmOverloads constructor(
             .getCurrentState()
             .tiles
             .flatten()
-            .map { tile -> tile?.type?.ordinal ?: Int.MIN_VALUE}
+            .map { tile -> tile?.type?.ordinal ?: Int.MIN_VALUE }
 
         return Bundle().apply {
             check(tilesFlattened.size % config.gridSize == 0)
