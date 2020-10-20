@@ -15,9 +15,8 @@ from a usability standpoint, but also because the code was just BAD. Comparing o
 was something that I had done a handful of time with friends/coworker.
 
 After one of these occasions of showing my coworkers, I wondered how long it would take to reimplement the 
-parts that I struggled with the first time. 
-
-Three days later I had reimplemented the core functionality, and since then i've just been using this app to tinker.
+parts that I struggled with the first time. Three days later I had reimplemented the core functionality 
+that I wanted, although nowhere near "parity". Development since then has gone in a different direction.
 
 <table>
   <thead>
@@ -42,6 +41,7 @@ Three days later I had reimplemented the core functionality, and since then i've
 - Removed most of the remaining mutable variables and refactor to have the state machine progress with 
   immutable data structures
 - Added a CI/CD pipeline to upload release builds to google play
+- Config dialog
 
 # Finite State Machine
 ![StateMachine diagram for game state](statemachine.png)
