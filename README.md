@@ -76,17 +76,19 @@ fun List<List<Tile?>>.alignTilesByFallDirection(directionToFallFrom: FallFromDir
     // all logic was originally assumed to have tiles fall from the top of the grid
     // this manipulates the board so the same logic can be applied when tiles fall from a different direction
 
-    // applying this twice will give you the original value
+    // applying alignTilesByFallDirection() twice will give you the original value
     // https://en.wikipedia.org/wiki/Involution_(mathematics)
 
-    fun List<List<Tile?>>.reverseGrid(): List<List<Tile?>> =
-        this.map { it.reversed() }.reversed()
+    fun List<List<Tile?>>.flipAlongYEqualsNegativeX(): List<List<Tile?>> = this
+        .transpose2DTileList()
+        .map { it.reversed() }
+        .reversed()
 
     return when (directionToFallFrom) {
         FallFromDirection.Top -> this
         FallFromDirection.Bottom -> this.map { it.reversed() }
         FallFromDirection.Left -> this.transpose2DTileList()
-        FallFromDirection.Right -> this.transpose2DTileList().reverseGrid()
+        FallFromDirection.Right -> this.flipAlongYEqualsNegativeX()
     }
 }
 ```
