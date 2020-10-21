@@ -167,15 +167,12 @@ data class State(
             // represents a column of visible and invisible tiles combined,
             // with invisible ones being used to supply new tiles
             check(this.size == config.gridSize * 2)
-
             if (null !in this) return this
 
             val newTopTile = listOf(newRandomTile(config.numTileTypes)) as List<Tile?>
-
             val tilesThatFell = newTopTile + this.subList(0, lowestFallableTile + 1)
 
             val indexOfBottomTile = (config.gridSize * 2) - 1
-
             val tilesThatDidNotFall = (lowestFallableTile + 2..indexOfBottomTile).map { this[it] }
 
             return tilesThatFell + tilesThatDidNotFall
@@ -273,13 +270,13 @@ data class State(
         }
 
         val nextStep = when (isBoardSame) {
-            true -> when (step.previousInput == null) {
-                true -> Step.WaitForInput
-                false -> Step.InputDetected(
+            true -> when (val previousInput = step.previousInput) {
+                null -> Step.WaitForInput
+                else -> Step.InputDetected(
                     touchInput = TouchInput(
-                        touched = step.previousInput.touchInput.switchWith,
-                        switchWith = step.previousInput.touchInput.touched,
-                        moveDirection = step.previousInput.touchInput.moveDirection.opposite()
+                        touched = previousInput.touchInput.switchWith,
+                        switchWith = previousInput.touchInput.touched,
+                        moveDirection = previousInput.touchInput.moveDirection.opposite()
                     ),
                     startTick = tick,
                     switchBackIfNoPoints = false

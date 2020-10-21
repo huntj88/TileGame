@@ -81,8 +81,8 @@ class GameView @JvmOverloads constructor(
             .flatten()
             .map { tile -> tile?.type?.ordinal ?: Int.MIN_VALUE }
 
+        check(tilesFlattened.size / config.gridSize == config.gridSize)
         return Bundle().apply {
-            check(tilesFlattened.size % config.gridSize == 0)
             putParcelable("super_state", super.onSaveInstanceState())
             putParcelable("config", config)
             putIntegerArrayList("tiles", ArrayList(tilesFlattened))
@@ -93,7 +93,7 @@ class GameView @JvmOverloads constructor(
         (state as? Bundle)?.getParcelable<Config>("config")?.let { config ->
             val resumedTiles = state
                 .getIntegerArrayList("tiles")!! // config exists, tiles should too
-                .also { check(it.size % config.gridSize == 0) }
+                .also { check(it.size / config.gridSize == config.gridSize) }
                 .map { typeEnumIndex ->
                     when (typeEnumIndex == Int.MIN_VALUE) {
                         true -> null

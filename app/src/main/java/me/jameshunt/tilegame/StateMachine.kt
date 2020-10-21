@@ -19,27 +19,6 @@ class StateMachine(
         return state
     }
 
-    fun resumeState(config: GameView.Config, tiles: List<List<Tile?>>) {
-        synchronized(this) {
-            externalInput.config = config
-            state = state.copy(tiles = tiles).loadConfigChange(config)
-        }
-    }
-
-    private fun getInitialState(): State {
-        val config = externalInput.config
-        val gridSize = config.gridSize
-        val numTileTypes = config.numTileTypes
-        return State(
-            tiles = getInitialBoard(gridSize, numTileTypes),
-            invisibleTiles = getInitialBoard(gridSize, numTileTypes),
-            step = Step.CheckForFallableTiles,
-            config = config,
-            directionToFallFrom = externalInput.directionToFallFrom,
-            lastTouchInput = null
-        )
-    }
-
     /**
      * By putting all of the magic in a background thread we can control
      * the rate at which the state machine progresses
@@ -74,6 +53,27 @@ class StateMachine(
                 onNewStateReadyForRender()
             }
         }
+    }
+
+    fun resumeState(config: GameView.Config, tiles: List<List<Tile?>>) {
+        synchronized(this) {
+            externalInput.config = config
+            state = state.copy(tiles = tiles).loadConfigChange(config)
+        }
+    }
+
+    private fun getInitialState(): State {
+        val config = externalInput.config
+        val gridSize = config.gridSize
+        val numTileTypes = config.numTileTypes
+        return State(
+            tiles = getInitialBoard(gridSize, numTileTypes),
+            invisibleTiles = getInitialBoard(gridSize, numTileTypes),
+            step = Step.CheckForFallableTiles,
+            config = config,
+            directionToFallFrom = externalInput.directionToFallFrom,
+            lastTouchInput = null
+        )
     }
 
     private fun State.loadInputChanges(externalInput: ExternalInput): State {
