@@ -43,7 +43,7 @@ class FixTileByGravityTest {
 
     @Test
     fun `once should not be equal`() {
-        val tiles = getInitialBoard(3, 6)
+        val tiles = getInitialBoard(50, 6)
 
         FallFromDirection.values()
             .filter { it != FallFromDirection.Top } // doesn't change grid at all
