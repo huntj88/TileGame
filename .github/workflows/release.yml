@@ -1,8 +1,16 @@
-name: Deploy
+name: Bump Version and Create Release
 
 on:
-  push:
-    branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      part:
+        description: 'Part of version to bump. Options: major, minor, patch'
+        required: true
+        default: 'none'
+      branch:
+        description: 'branch name'
+        required: true
+        default: 'master'
 
 jobs:
   deploy:
@@ -21,15 +29,12 @@ jobs:
       - name: Build and Test
         run: ./gradlew test
 
-      - name: Will check to see if should tag new version, fail otherwise
-        run: echo "documentation https://github.com/anothrNick/github-tag-action"
-
       - name: Bump version and push tag
         uses: anothrNick/github-tag-action@1.26.0
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          RELEASE_BRANCHES: master
-          DEFAULT_BUMP: none
+          RELEASE_BRANCHES: ${{ github.event.inputs.branch }}"
+          DEFAULT_BUMP: ${{ github.event.inputs.part }}"
 
       - name: Generate Release Bundle
         run: ./gradlew bundleRelease
