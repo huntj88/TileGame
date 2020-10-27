@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import me.jameshunt.tilegame.input.FallFromDirection
 import me.jameshunt.tilegame.input.MoveDirection
+import kotlin.math.pow
 import kotlin.random.Random
 
 fun State.renderTileGrid(
@@ -170,16 +171,17 @@ class TileRenderer {
         tick: Int,
         step: Step
     ): Float {
-        if (y == -1) return 6f
+        val default = tileSize / (tileSize.pow(0.5f) * 2)
+        if (y == -1) return default
 
         return (step as? Step.RemovingTiles)?.let {
             val sizeShrinkPerTick = tileSize / 2 / step.tickDuration
 
             when (it.newBoardAfterRemove.getOrNull(x)?.getOrNull(y) == null) {
                 true -> (tileSize / 14) + tileSize - (sizeShrinkPerTick * ((tick - step.startTick) % step.tickDuration))
-                false -> 6f
+                false -> default
             }
-        } ?: 6f
+        } ?: default
     }
 
     private fun inputMoveOffset(
