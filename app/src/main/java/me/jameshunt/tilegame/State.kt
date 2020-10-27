@@ -44,7 +44,7 @@ sealed class Step {
  */
 data class State(
     val tiles: List<List<Tile?>>,
-    val invisibleTiles: List<List<Tile?>>,
+    val invisibleTiles: List<Tile?>,
     val step: Step,
     val tick: Int = 0,
     val config: GameView.Config,
@@ -71,7 +71,7 @@ data class State(
             is Step.CheckForFallableTiles -> handleCheckingForFallableTiles()
             is Step.TilesFalling -> step.onAnimationCompleted(
                 startTick = step.startTick,
-                generateNextState = { handleTilesFalling(step) }
+                generateNextState = { handleTilesFalling() }
             )
             is Step.CheckForPoints -> handleCheckForPoints(step)
             is Step.RemovingTiles -> step.onAnimationCompleted(
@@ -126,12 +126,14 @@ data class State(
     }
 
     private fun handleCheckingForFallableTiles(): State {
-        // find lowest fallable posY of each row
-        // if any fallable tiles set current state to TilesFalling
-        // if no fallable tiles set current state to CheckForPoints
-
         check(tiles.size == config.gridSize)
         check(tiles.first().size == config.gridSize)
+
+        if (null !in tiles.flatten()) {
+            // no fallable tiles, check for points
+            return this.copy(step = Step.CheckForPoints(null))
+        }
+
         val directionFixedTiles = tiles.alignTilesByFallDirection(directionToFallFrom)
 
         val lowestPosYOfFallableTiles: List<TileYCoordinate> = directionFixedTiles.map { tileColumn ->
@@ -141,58 +143,46 @@ data class State(
                 .indexOfLast { it != null }
         }
 
-        val doneFalling = lowestPosYOfFallableTiles.foldIndexed(true) { index, acc, posY ->
-            val indexOfBottomTile = config.gridSize - 1
-            acc && (posY == indexOfBottomTile || null !in directionFixedTiles[index])
-        }
-
-        val nextStep = when (doneFalling) {
-            true -> Step.CheckForPoints(null)
-            false -> Step.TilesFalling(
+        return this.copy(
+            step = Step.TilesFalling(
                 startTick = tick,
                 lowestPosYOfFallableTiles = lowestPosYOfFallableTiles,
                 fallingFromDirection = directionToFallFrom
             )
-        }
-
-        return this.copy(step = nextStep)
+        )
     }
 
-    private fun handleTilesFalling(step: Step.TilesFalling): State {
+    private fun handleTilesFalling(): State {
         // shift ones that fell to tile spot below
         // set current state to CheckForFallableTiles
 
-        // for joined (numTilesSize x (numTilesSize * 2)) grid
-        fun List<Tile?>.shiftTilesInColumnDown(lowestFallableTile: TileYCoordinate): List<Tile?> {
-            // represents a column of visible and invisible tiles combined,
-            // with invisible ones being used to supply new tiles
-            check(this.size == config.gridSize * 2)
+        fun List<Tile?>.shiftTilesInColumnDown(): List<Tile?> {
+            // represents a column of the invisible tile and visible tiles combined, (gridSize + 1)
+            check(this.size == config.gridSize + 1)
             if (null !in this) return this
 
-            val newTopTile = listOf(newRandomTile(config.numTileTypes)) as List<Tile?>
-            val tilesThatFell = newTopTile + this.subList(0, lowestFallableTile + 1)
+            val newTopTile: List<Tile?> = listOf(newRandomTile(config.numTileTypes))
 
-            val indexOfBottomTile = (config.gridSize * 2) - 1
-            val tilesThatDidNotFall = (lowestFallableTile + 2..indexOfBottomTile).map { this[it] }
+            val bottomNullIndex = this.lastIndexOf(null)
+            check(bottomNullIndex != -1)
 
-            return tilesThatFell + tilesThatDidNotFall
+            val tileThatFell = this.subList(0, bottomNullIndex)
+            val tilesThatDidNotFall = this.subList(bottomNullIndex + 1, this.size)
+            return newTopTile + tileThatFell + tilesThatDidNotFall
         }
 
         val joinedGridShift = tiles.alignTilesByFallDirection(directionToFallFrom)
-            .mapIndexed { index, list -> invisibleTiles[index] + list }
-            .mapIndexed { index, arrayOfTiles ->
-                val lowestFallableTile = step.lowestPosYOfFallableTiles[index] + config.gridSize
-                arrayOfTiles.shiftTilesInColumnDown(lowestFallableTile)
-            }
+            .mapIndexed { index, list -> listOf(invisibleTiles[index]) + list }
+            .map { arrayOfTiles -> arrayOfTiles.shiftTilesInColumnDown() }
 
         check(config.gridSize == joinedGridShift.size)
-        check(config.gridSize * 2 == joinedGridShift.first().size)
+        check(config.gridSize + 1 == joinedGridShift.first().size)
 
         return this.copy(
             tiles = joinedGridShift
-                .map { it.subList(config.gridSize, config.gridSize * 2) }
+                .map { it.subList(1, config.gridSize + 1) }
                 .alignTilesByFallDirection(directionToFallFrom),
-            invisibleTiles = joinedGridShift.map { it.subList(0, config.gridSize) },
+            invisibleTiles = joinedGridShift.map { it.first() },
             step = Step.CheckForFallableTiles
         )
 

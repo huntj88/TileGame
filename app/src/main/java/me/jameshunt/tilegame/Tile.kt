@@ -50,14 +50,6 @@ fun List<List<Tile?>>.shrinkOrGrow(newGridSize: Int): List<List<Tile?>> {
     }
 }
 
-fun List<List<Tile?>>.shrinkOrGrowFilled(newGridSize: Int, numTileTypes: Int): List<List<Tile?>> {
-    if (this.size == newGridSize) return this
-
-    return (0 until newGridSize).map { x ->
-        val column = getOrNull(x)
-        (0 until newGridSize).map { y ->
-            val existingTile = column?.getOrNull(y)
-            existingTile ?: newRandomTile(numTileTypes)
-        }
-    }
+fun List<Tile?>.shrinkOrGrowInvisible(newGridSize: Int): List<Tile?> {
+    return (0 until newGridSize).map { this.getOrNull(it) }
 }

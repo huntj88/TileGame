@@ -68,7 +68,7 @@ class StateMachine(
         val numTileTypes = config.numTileTypes
         return State(
             tiles = getInitialBoard(gridSize, numTileTypes),
-            invisibleTiles = getInitialBoard(gridSize, numTileTypes),
+            invisibleTiles = emptyList<Tile?>().shrinkOrGrowInvisible(gridSize),
             step = Step.CheckForFallableTiles,
             config = config,
             directionToFallFrom = externalInput.directionToFallFrom,
@@ -112,29 +112,13 @@ internal fun State.loadConfigChange(newConfig: GameView.Config): State {
         return this
     }
 
-    fun Step.TilesFalling.handleTilesFallingConfigChange(): Step {
-        // falling state data could be stale due to different tile grid size
-        return when (newConfig.gridSize == this.lowestPosYOfFallableTiles.size) {
-            true -> this
-            false -> Step.CheckForFallableTiles
-        }
-    }
-
     return this.copy(
         config = newConfig,
         tiles = this.tiles.shrinkOrGrow(newConfig.gridSize),
-        invisibleTiles = this.invisibleTiles.shrinkOrGrowFilled(
-            newGridSize = newConfig.gridSize,
-            numTileTypes = newConfig.numTileTypes
-        ),
-        step = when (step) {
-            is Step.TilesFalling -> step.handleTilesFallingConfigChange()
-            else -> step
-        }
+        invisibleTiles = this.invisibleTiles.shrinkOrGrowInvisible(newConfig.gridSize)
     ).also {
         check(it.config.gridSize == it.tiles.size)
-        check(it.config.gridSize == it.invisibleTiles.size)
         check(it.config.gridSize == it.tiles.first().size)
-        check(it.config.gridSize == it.invisibleTiles.first().size)
+        check(it.config.gridSize == it.invisibleTiles.size)
     }
 }
