@@ -68,7 +68,7 @@ of the screen, or the sides. It would no longer be restricted to to one fall dir
 #### Solution
 I came to the realization that I didn't really need to change my logic at all. All that was actually 
 needed was for me to transform the grid in a specific way for each fall direction before passing the 
-result into my "fall from top only logic". I was able to keep 95% of my existing tile grid logic.
+result into my "fall from top only" logic. I was able to keep 95% of my existing tile grid logic.
 
 Before executing some of the grid logic in a few key places, I would call `alignTilesByFallDirection()`
 ```kotlin

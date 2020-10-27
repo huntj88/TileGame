@@ -16,10 +16,7 @@ class StateTest {
                 listOf(Tile(TileType.One), Tile(TileType.One)),
                 listOf(Tile(TileType.One), Tile(TileType.One))
             ),
-            invisibleTiles = listOf(
-                listOf(Tile(TileType.One), Tile(TileType.One)),
-                listOf(Tile(TileType.One), Tile(TileType.One))
-            ),
+            invisibleTiles = listOf<Tile?>().shrinkOrGrowInvisible(ex.config.gridSize),
             step = Step.CheckForFallableTiles,
             directionToFallFrom = ex.directionToFallFrom,
             config = ex.config,
@@ -39,10 +36,7 @@ class StateTest {
                 listOf(null, null),
                 listOf(Tile(TileType.One), Tile(TileType.One))
             ),
-            invisibleTiles = listOf(
-                listOf(Tile(TileType.One), Tile(TileType.One)),
-                listOf(Tile(TileType.One), Tile(TileType.One))
-            ),
+            invisibleTiles = listOf(Tile(TileType.One), Tile(TileType.One)),
             step = Step.CheckForFallableTiles,
             directionToFallFrom = ex.directionToFallFrom,
             config = ex.config,
@@ -58,7 +52,6 @@ class StateTest {
             }
     }
 
-    //
     @Test
     fun checkMatches() {
         val ex = ExternalInput(GameView.Config(gridSize = 3))
