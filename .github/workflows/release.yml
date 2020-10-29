@@ -131,22 +131,22 @@ jobs:
           tag: ${{ needs.bump_version.outputs.release_tag }}
           file_glob: true
 
-#  upload_to_google_play:
-#    needs: build_release_aab
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/download-artifact@v2
-#        with:
-#          name: release-bundle
-#
-#      - name: Create service_account.json FROM secrets.SERVICE_ACCOUNT_JSON
-#        run: echo '${{ secrets.SERVICE_ACCOUNT_JSON }}' > service_account.json
-#
-#      - name: Upload To Google Play
-#        uses: r0adkll/upload-google-play@v1
-#        with:
-#          serviceAccountJson: service_account.json
-#          packageName: me.jameshunt.tilegame
-#          releaseFile: app-release.aab
-#          track: internal
-#          mappingFile: mapping.txt
+  upload_to_google_play:
+    needs: build_release_aab
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: release-bundle
+
+      - name: Create service_account.json FROM secrets.SERVICE_ACCOUNT_JSON
+        run: echo '${{ secrets.SERVICE_ACCOUNT_JSON }}' > service_account.json
+
+      - name: Upload To Google Play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: service_account.json
+          packageName: me.jameshunt.tilegame
+          releaseFile: app-release.aab
+          track: internal
+          mappingFile: mapping.txt
