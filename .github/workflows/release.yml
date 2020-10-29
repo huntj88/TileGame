@@ -10,6 +10,8 @@ on:
 jobs:
   bump_version:
     runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.bump.outputs.new_tag }}
     steps:
       - uses: actions/checkout@v2
         with:
@@ -26,6 +28,7 @@ jobs:
         run: ./gradlew test
 
       - name: Bump version and push tag
+        id: bump
         uses: anothrNick/github-tag-action@1.26.0
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
@@ -103,7 +106,7 @@ jobs:
           path: release
 
   create_github_release:
-    needs: [build_release_aab, build_release_apk]
+    needs: [bump_version, build_release_aab, build_release_apk]
     runs-on: ubuntu-latest
     steps:
       - run: mkdir githubOutput
@@ -118,30 +121,32 @@ jobs:
           name: release-bundle
           path: githubOutput
 
+      - run: ls githubOutput
+
       - name: Upload to GitHub Release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           file: githubOutput/*
-          tag: ${{ github.ref }}
+          tag: ${{ needs.bump_version.outputs.release_tag }}
           file_glob: true
 
-  upload_to_google_play:
-    needs: build_release_aab
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v2
-        with:
-          name: release-bundle
-
-      - name: Create service_account.json FROM secrets.SERVICE_ACCOUNT_JSON
-        run: echo '${{ secrets.SERVICE_ACCOUNT_JSON }}' > service_account.json
-
-      - name: Upload To Google Play
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJson: service_account.json
-          packageName: me.jameshunt.tilegame
-          releaseFile: app-release.aab
-          track: internal
-          mappingFile: mapping.txt
+#  upload_to_google_play:
+#    needs: build_release_aab
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/download-artifact@v2
+#        with:
+#          name: release-bundle
+#
+#      - name: Create service_account.json FROM secrets.SERVICE_ACCOUNT_JSON
+#        run: echo '${{ secrets.SERVICE_ACCOUNT_JSON }}' > service_account.json
+#
+#      - name: Upload To Google Play
+#        uses: r0adkll/upload-google-play@v1
+#        with:
+#          serviceAccountJson: service_account.json
+#          packageName: me.jameshunt.tilegame
+#          releaseFile: app-release.aab
+#          track: internal
+#          mappingFile: mapping.txt
