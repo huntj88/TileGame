@@ -44,7 +44,7 @@ that I wanted, although nowhere near "parity". Development since then has gone i
 - Config dialog
 
 # Finite State Machine
-![StateMachine diagram for game state](statemachine.png)
+![StateMachine diagram for game state](img/statemachine.png)
 
 The state machine loops infinitely on a background thread. Each iteration would increment the *tick* by 1.
 
@@ -114,21 +114,23 @@ setup the board in a specific way. Testing is as easy as asserting the expected 
 after the state has been progressed a known number of times.
 
 # CI/CD setup
-#### Versioning - master branch only
-To bump and tag a new version, include one of the following text snippets in a commit message.
-- #major
-- #minor
-- #patch
+Any commits to the master branch, or any PR's that are opened will automatically build the app and run unit tests.
 
-https://github.com/anothrNick/github-tag-action
+#### Creating a new release - master branch only
+There is a manual trigger to create a new release. This includes incrementing the version and 
+tagging it, as well as uploading the signed app bundle to google play.
 
-When a new commit is added to the master branch a github action for deploying to Google Play is started.
-#### Action Steps:
+![Manual release trigger for CI/CD](img/releaseTrigger.png)
+
+The trigger has a required field that must be one of: `major`, `minor`, `patch`.
+This value is used to increment the corresponding part of the canonical version
+
+#### Release Trigger Action Steps:
 1. Checkout master branch
-2. Build And run unit tests
-3. Tag with a new version number
-4. Assemble Android app Bundle
-5. Sign the bundle with the release key
-6. upload to Google Play console and publish on internal track
-
-Building and testing also takes place when a pull request is opened
+2. Validate release trigger input
+3. Build And run unit tests
+4. Tag with a new version number
+5. Assemble Android app Bundle and APK
+6. Sign the bundle and APK with the release key
+7. Upload artifacts to GitHub Release
+8. Upload to Google Play console and publish on internal track
