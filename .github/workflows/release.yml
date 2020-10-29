@@ -53,10 +53,10 @@ jobs:
           keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
 
-    - run: |
-        mkdir release
-        cp ${{ env.SIGNED_RELEASE_FILE }} release
-        cp app/build/outputs/mapping/release/mapping.txt release
+      - run: |
+          mkdir release
+          cp ${{ env.SIGNED_RELEASE_FILE }} release
+          cp app/build/outputs/mapping/release/mapping.txt release
 
       - uses: actions/upload-artifact@v2
         with:
