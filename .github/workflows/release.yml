@@ -98,6 +98,30 @@ jobs:
           name: release-apk
           path: release
 
+  create_github_release:
+    needs: [build_release_aab, build_release_apk]
+    runs-on: ubuntu-latest
+    steps:
+      - run: mkdir githubOutput
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: release-apk
+          path: githubOutput
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: release-bundle
+          path: githubOutput
+
+      - name: Upload to GitHub Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          file: githubOutput/*
+          tag: ${{ github.ref }}
+          file_glob: true
+
 #  deploy:
 #    runs-on: ubuntu-latest
 #    steps:
