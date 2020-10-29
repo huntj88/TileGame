@@ -90,7 +90,7 @@ jobs:
 
       - run: |
           mkdir release
-          cp ${{ env.SIGNED_RELEASE_FILE }} release
+          mv ${{ env.SIGNED_RELEASE_FILE }} release/app-release-signed.apk
           cp app/build/outputs/mapping/release/mapping.txt release
 
       - uses: actions/upload-artifact@v2
@@ -102,6 +102,7 @@ jobs:
     needs: [build_release_aab, build_release_apk]
     runs-on: ubuntu-latest
     steps:
+      - run: echo "${{ github.ref }}"
       - run: mkdir githubOutput
 
       - uses: actions/download-artifact@v2
