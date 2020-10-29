@@ -130,6 +130,7 @@ This value is used to increment the corresponding part of the canonical version
 2. Validate release trigger input
 3. Build And run unit tests
 4. Tag with a new version number
-5. Assemble Android app Bundle
-6. Sign the bundle with the release key
-7. Upload to Google Play console and publish on internal track
+5. Assemble Android app Bundle and APK
+6. Sign the bundle and APK with the release key
+7. Upload artifacts to GitHub Release
+8. Upload to Google Play console and publish on internal track
